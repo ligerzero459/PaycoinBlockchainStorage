@@ -59,33 +59,20 @@ def start_up_sequel
     Float :value
   end
 
-  blocks = db[:blocks]
-  puts blocks.all
-end
-
-def start_up_db
-  db = SQLite3::Database.open('../XPYBlockchain.sqlite')
-
-  # Create tables if they don't exist
-  exists = db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='outputs'")
-  if exists.length == 0
-    db.execute("CREATE TABLE IF NOT EXISTS `outputs` (
-      `id`	INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-      `transactionId`	INTEGER,
-      `n`	INTEGER,
-      `script`	TEXT,
-      `type`	TEXT,
-      `address`	TEXT,
-      `value`	REAL
-    )")
+  db.create_table? :outputs do
+    primary_key :id
+    Fixnum :transactionId
+    Fixnum :n
+    String :script
+    String :type
+    String :address
+    Float :value
   end
 
-  # return completed db
   db
 end
 
 silkroad = start_up_rpc
-# db = start_up_db
 db = start_up_sequel
 
 # hash = silkroad.rpc 'getblockhash', 2554
