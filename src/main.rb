@@ -3,7 +3,6 @@
 require 'silkroad'
 require 'sqlite3'
 require 'json'
-require 'benchmark'
 
 # Variable declarations
 silkroad = nil
@@ -23,13 +22,11 @@ def start_up_db
 
   # Create tables if they don't exist
   exists = db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='blocks'")
-  puts 'exists: ' + exists.to_s
   if exists.length == 0
-    puts 'creating table'
     db.execute("CREATE TABLE IF NOT EXISTS `blocks` (
       `id`	INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
       `hash`	TEXT NOT NULL UNIQUE,
-      `height`	INTEGER NOT NULL UNIQUE,
+      `height`	INTEGER UNIQUE,
       `blockTime`	TEXT,
       `mint`	REAL,
       `previousBlockHash`	TEXT,
@@ -39,7 +36,7 @@ def start_up_db
 
   exists = db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='raw_blocks'")
   if exists.length == 0
-    db.execute("CREATE TABLE `raw_blocks` (
+    db.execute("CREATE TABLE IF NOT EXISTS `raw_blocks` (
       `id`	INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
       `height`	INTEGER,
       `raw`	BLOB
@@ -48,12 +45,18 @@ def start_up_db
 
   exists = db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='transactions'")
   if exists.length == 0
-
+    db.execute("CREATE TABLE IF NOT EXISTS `transactions` (
+      `id`	INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+      `txid`	TEXT,
+      `blockId`	INTEGER,
+      `totalOutput`	REAL,
+      `fees`	REAL
+    )")
   end
 
   exists = db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='raw_transactions'")
   if exists.length == 0
-    db.execute("CREATE TABLE `raw_blocks` (
+    db.execute("CREATE TABLE IF NOT EXISTS `raw_transactions` (
       `id`	INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
       `txid`	TEXT,
       `raw`	BLOB
@@ -62,12 +65,26 @@ def start_up_db
 
   exists = db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='inputs'")
   if exists.length == 0
-
+    db.execute("CREATE TABLE IF NOT EXISTS `inputs` (
+      `id`	INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+      `transactionId`	INTEGER,
+      `outputTransactionId`	INTEGER,
+      `outputTxid`	TEXT,
+      `value`	REAL
+    )")
   end
 
   exists = db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='outputs'")
   if exists.length == 0
-
+    db.execute("CREATE TABLE IF NOT EXISTS `outputs` (
+      `id`	INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+      `transactionId`	INTEGER,
+      `n`	INTEGER,
+      `script`	TEXT,
+      `type`	TEXT,
+      `address`	TEXT,
+      `value`	REAL
+    )")
   end
 
   # return completed db
@@ -76,6 +93,7 @@ end
 
 silkroad = start_up_rpc
 # db = start_up_db
+db = start_up_sequel
 
 # hash = silkroad.rpc 'getblockhash', 2554
 hash = silkroad.rpc 'getblockhash', 403165
