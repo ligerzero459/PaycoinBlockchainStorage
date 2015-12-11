@@ -23,67 +23,50 @@ def start_up_sequel
 
   db.create_table? :blocks do
     primary_key :id
-    String
+    String :hash, :unique=>true
+    Fixnum :height, :unique=>true
+    String :blockTime
+    Float :mint
+    String :previousBlockHash
+    String :flags
   end
+
+  db.create_table? :raw_blocks do
+    primary_key :id
+    Fixnum :height
+    File :raw
+  end
+
+  db.create_table? :transactions do
+    primary_key :id
+    String :txid
+    Fixnum :blockId
+    Float :totalOutput
+    Float :fees
+  end
+
+  db.create_table? :raw_transactions do
+    primary_key :id
+    String :txid
+    File :raw
+  end
+
+  db.create_table? :inputs do
+    primary_key :id
+    Fixnum :transactionId
+    Fixnum :outputTransactionId
+    String :outputTxid
+    Float :value
+  end
+
+  blocks = db[:blocks]
+  puts blocks.all
 end
 
 def start_up_db
   db = SQLite3::Database.open('../XPYBlockchain.sqlite')
 
   # Create tables if they don't exist
-  exists = db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='blocks'")
-  if exists.length == 0
-    db.execute("CREATE TABLE IF NOT EXISTS `blocks` (
-      `id`	INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-      `hash`	TEXT NOT NULL UNIQUE,
-      `height`	INTEGER UNIQUE,
-      `blockTime`	TEXT,
-      `mint`	REAL,
-      `previousBlockHash`	TEXT,
-      `flags`	TEXT
-    )")
-  end
-
-  exists = db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='raw_blocks'")
-  if exists.length == 0
-    db.execute("CREATE TABLE IF NOT EXISTS `raw_blocks` (
-      `id`	INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-      `height`	INTEGER,
-      `raw`	BLOB
-    )")
-  end
-
-  exists = db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='transactions'")
-  if exists.length == 0
-    db.execute("CREATE TABLE IF NOT EXISTS `transactions` (
-      `id`	INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-      `txid`	TEXT,
-      `blockId`	INTEGER,
-      `totalOutput`	REAL,
-      `fees`	REAL
-    )")
-  end
-
-  exists = db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='raw_transactions'")
-  if exists.length == 0
-    db.execute("CREATE TABLE IF NOT EXISTS `raw_transactions` (
-      `id`	INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-      `txid`	TEXT,
-      `raw`	BLOB
-    )")
-  end
-
-  exists = db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='inputs'")
-  if exists.length == 0
-    db.execute("CREATE TABLE IF NOT EXISTS `inputs` (
-      `id`	INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-      `transactionId`	INTEGER,
-      `outputTransactionId`	INTEGER,
-      `outputTxid`	TEXT,
-      `value`	REAL
-    )")
-  end
-
   exists = db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='outputs'")
   if exists.length == 0
     db.execute("CREATE TABLE IF NOT EXISTS `outputs` (
