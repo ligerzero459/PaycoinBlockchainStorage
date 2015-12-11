@@ -2,6 +2,7 @@
 # Run 'bundler install' to download before running
 require 'silkroad'
 require 'sqlite3'
+require 'sequel'
 require 'json'
 
 # Variable declarations
@@ -15,6 +16,15 @@ def start_up_rpc
   silkroad = Silkroad::Client.new paycoinURI, {}
 
   silkroad
+end
+
+def start_up_sequel
+  db = Sequel.sqlite('../XPYBlockchain.sqlite')
+
+  db.create_table? :blocks do
+    primary_key :id
+    String
+  end
 end
 
 def start_up_db
