@@ -77,7 +77,8 @@ end
 silkroad = start_up_rpc
 # db = start_up_db
 
-hash = silkroad.rpc 'getblockhash', 2554
+# hash = silkroad.rpc 'getblockhash', 2554
+hash = silkroad.rpc 'getblockhash', 403165
 block = silkroad.rpc 'getblock', hash
 
 puts JSON.pretty_generate(block)
@@ -94,14 +95,28 @@ decoded_txs = silkroad.batch do
   end
 end
 
-puts decoded_txs[0].fetch("result")
-vin = decoded_txs[0].fetch("result").fetch("vin")
+decoded_txs.each do |decoded_tx|
+  puts decoded_tx.fetch("result")
+  result = decoded_tx.fetch("result")
+  puts 'txid: ' << result.fetch("txid")
+  vins = result.fetch("vin")
 
-if vin[0]['coinbase'] != nil
-  puts vin[0]['coinbase']
-else
-  puts vin[0]['txid']
+  vins.each_with_index do |vin, i|
+    if vin['coinbase'] != nil
+      puts 'coinbase: ' << vin['coinbase']
+    else
+      puts 'input tx: ' << vin['txid']
+    end
+  end
+
+  vouts = result.fetch("vout")
+  vouts.each do |vout|
+    puts 'script: ' << vout.fetch("scriptPubKey").fetch("asm")
+    puts ''
+  end
 end
+
+
 
 # Code for multiple blocks
 # Will be updated once single block and transactions are read into DB
