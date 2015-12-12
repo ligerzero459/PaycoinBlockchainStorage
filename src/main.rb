@@ -24,7 +24,7 @@ end
 def start_up_sequel
   db = Sequel.sqlite('../XPYBlockchain.sqlite')
 
-  db.create_table! :blocks do
+  db.create_table? :blocks do
     primary_key :id
     String :hash, :unique=>true
     Fixnum :height, :unique=>true
@@ -36,14 +36,14 @@ def start_up_sequel
     index :height
   end
 
-  db.create_table! :raw_blocks do
+  db.create_table? :raw_blocks do
     primary_key :id
     Fixnum :height
     File :raw
     index :height
   end
 
-  db.create_table! :transactions do
+  db.create_table? :transactions do
     primary_key :id
     String :txid
     Fixnum :blockId
@@ -54,14 +54,14 @@ def start_up_sequel
     index :blockId
   end
 
-  db.create_table! :raw_transactions do
+  db.create_table? :raw_transactions do
     primary_key :id
     String :txid
     File :raw
     index :txid
   end
 
-  db.create_table! :inputs do
+  db.create_table? :inputs do
     primary_key :id
     Fixnum :transactionId
     Fixnum :outputTransactionId
@@ -71,7 +71,7 @@ def start_up_sequel
     index :outputTransactionId
   end
 
-  db.create_table! :outputs do
+  db.create_table? :outputs do
     primary_key :id
     Fixnum :transactionId
     Fixnum :n
@@ -97,7 +97,7 @@ end
 silkroad = start_up_rpc
 db = start_up_sequel
 
-hash = silkroad.rpc 'getblockhash', 1
+hash = silkroad.rpc 'getblockhash', 159
 # hash = silkroad.rpc 'getblockhash', 403165
 # hash = silkroad.rpc 'getblockhash', 398014
 block = silkroad.rpc 'getblock', hash
@@ -120,7 +120,7 @@ db_block.mint = mint
 db_block.previousBlockHash = prev_block_hash
 db_block.flags = flags
 db_block.save
-# db_raw_block.save
+db_raw_block.save
 
 puts db_block.id.to_s
 
@@ -141,6 +141,7 @@ decoded_txs.each do |decoded_tx|
   result = decoded_tx.fetch("result")
   txid = result.fetch("txid")
   puts 'txid: ' << txid
+  reward_block = false
 
   RawTransaction.create(:txid => txid, :raw => JSON.pretty_generate(decoded_tx))
   db_transaction = Transaction.create(:txid => txid, :blockId => db_block.id)
@@ -149,18 +150,26 @@ decoded_txs.each do |decoded_tx|
   total_input = 0
 
   vins.each_with_index do |vin, i|
+
     if vin['coinbase'] != nil
       puts 'coinbase: ' << "Generation & Fees"
+      reward_block = true
     else
       previousOutputTxid = vin['txid']
       puts 'previous output tx: ' << previousOutputTxid
-      total_input += 1019.869503
+      output = Output[:transactionId => Transaction[:txid => previousOutputTxid].id]
+      puts output.transactionId
+      total_input += output.value
     end
   end
+
+  puts 'total input: ' << total_input.to_s
 
   vouts = result.fetch("vout")
   total_output = 0
   stake = false
+
+  # Loop through all outputs
   vouts.each do |vout|
     value = vout.fetch("value")
     total_output += value.round(6)
@@ -177,13 +186,24 @@ decoded_txs.each do |decoded_tx|
         stake = true
       end
     end
+    address = ''
     if type == "pubkey" || type == "pubkeyhash"
       address = script.fetch("addresses")[0]
       puts 'address: ' << address
     end
+
+    # Save output to database
+    Output.create(
+        :transactionId => db_transaction.id,
+        :n => n,
+        :script => asm,
+        :type => type,
+        :address => address,
+        :value => value
+    )
   end
 
-  db_transaction.total_output = total_output.round(6)
+  db_transaction.totalOutput = total_output.round(6)
   puts 'total output: ' << total_output.round(6).to_s
   if stake && vouts.length > 1
     #set transaction type to PoS-Reward
@@ -193,22 +213,27 @@ decoded_txs.each do |decoded_tx|
       stake_amount = total_output - total_input
       db_transaction.fees = stake_amount.rount(6)
       puts 'stake amount: ' << stake_amount.round(6).to_s
+      db_transaction.type = 'PoS-Reward'
     else
       # Assume scrape address
       puts 'Stake with scrape'
       stake_amount = vouts[2].fetch("value")
       db_transaction.fees = stake_amount.rount(6)
       puts 'stake amount: ' << stake_amount.round(6).to_s
+      db_transaction.type = 'PoS-Reward'
     end
-  elsif !stake && vouts.length == 1
+  elsif !stake && reward_block
     # set transaction type to PoW-Reward
     db_transaction.fees = total_output.round(6)
+    db_transaction.type ='PoW-Reward'
     puts 'PoW-Reward'
   else
     # set transaction type to normal
-    db_transaction.fees = (total_output - total_input).round(6)
+    db_transaction.fees = (total_input - total_output).round(6)
+    db_transaction.type = 'normal'
     puts 'normal'
   end
+  db_transaction.save
 end
 
 
