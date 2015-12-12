@@ -5,6 +5,9 @@ require 'sqlite3'
 require 'sequel'
 require 'json'
 
+# Internal dependancies/models
+
+
 # Variable declarations
 silkroad = nil
 db = nil
@@ -21,7 +24,7 @@ end
 def start_up_sequel
   db = Sequel.sqlite('../XPYBlockchain.sqlite')
 
-  db.create_table? :blocks do
+  db.create_table! :blocks do
     primary_key :id
     String :hash, :unique=>true
     Fixnum :height, :unique=>true
@@ -33,14 +36,14 @@ def start_up_sequel
     index :height
   end
 
-  db.create_table? :raw_blocks do
+  db.create_table! :raw_blocks do
     primary_key :id
     Fixnum :height
     File :raw
     index :height
   end
 
-  db.create_table? :transactions do
+  db.create_table! :transactions do
     primary_key :id
     String :txid
     Fixnum :blockId
@@ -51,14 +54,14 @@ def start_up_sequel
     index :blockId
   end
 
-  db.create_table? :raw_transactions do
+  db.create_table! :raw_transactions do
     primary_key :id
     String :txid
     File :raw
     index :txid
   end
 
-  db.create_table? :inputs do
+  db.create_table! :inputs do
     primary_key :id
     Fixnum :transactionId
     Fixnum :outputTransactionId
@@ -68,7 +71,7 @@ def start_up_sequel
     index :outputTransactionId
   end
 
-  db.create_table? :outputs do
+  db.create_table! :outputs do
     primary_key :id
     Fixnum :transactionId
     Fixnum :n
@@ -80,29 +83,46 @@ def start_up_sequel
     index [:transactionId, :value]
   end
 
+  # Object models for tables
+  require './models/block'
+  require './models/raw_block'
+  require './models/transaction'
+  require './models/raw_transaction'
+  require './models/input'
+  require './models/output'
+
   db
 end
 
 silkroad = start_up_rpc
 db = start_up_sequel
 
-hash = silkroad.rpc 'getblockhash', 2554
+hash = silkroad.rpc 'getblockhash', 1
 # hash = silkroad.rpc 'getblockhash', 403165
 # hash = silkroad.rpc 'getblockhash', 398014
 block = silkroad.rpc 'getblock', hash
 
-puts JSON.pretty_generate(block)
+db_raw_block = RawBlock.new
+db_raw_block.raw = JSON.pretty_generate(block)
+
+db_block = Block.new
 
 height = block.fetch("height").to_i
 time = block.fetch("time")
 mint = block.fetch("mint")
 prev_block_hash = block.fetch("previousblockhash")
 flags = block.fetch("flags")
-puts 'height: ' << height.to_s
-puts 'time: ' << time
-puts 'mint: ' << mint.to_s
-puts 'previous block hash: ' << prev_block_hash
-puts 'flags: ' << flags
+db_block.hash = hash
+db_block.height = height
+db_raw_block.height = height
+db_block.blockTime = time
+db_block.mint = mint
+db_block.previousBlockHash = prev_block_hash
+db_block.flags = flags
+db_block.save
+# db_raw_block.save
+
+puts db_block.id.to_s
 
 raw_txs = silkroad.batch do
   block['tx'].each do |tx|
@@ -121,6 +141,10 @@ decoded_txs.each do |decoded_tx|
   result = decoded_tx.fetch("result")
   txid = result.fetch("txid")
   puts 'txid: ' << txid
+
+  RawTransaction.create(:txid => txid, :raw => JSON.pretty_generate(decoded_tx))
+  db_transaction = Transaction.create(:txid => txid, :blockId => db_block.id)
+
   vins = result.fetch("vin")
   total_input = 0
 
@@ -158,25 +182,31 @@ decoded_txs.each do |decoded_tx|
       puts 'address: ' << address
     end
   end
+
+  db_transaction.total_output = total_output.round(6)
   puts 'total output: ' << total_output.round(6).to_s
   if stake && vouts.length > 1
     #set transaction type to PoS-Reward
     if vouts[1].fetch("scriptPubKey").fetch("addresses")[0] == vouts[2].fetch("scriptPubKey").fetch("addresses")[0]
       # Normal stake with no scrape address
       puts 'Stake with no scrape'
-      stake_amount = (vouts[2].fetch("value") + vouts[1].fetch("value")) - total_input
+      stake_amount = total_output - total_input
+      db_transaction.fees = stake_amount.rount(6)
       puts 'stake amount: ' << stake_amount.round(6).to_s
     else
       # Assume scrape address
       puts 'Stake with scrape'
       stake_amount = vouts[2].fetch("value")
+      db_transaction.fees = stake_amount.rount(6)
       puts 'stake amount: ' << stake_amount.round(6).to_s
     end
   elsif !stake && vouts.length == 1
     # set transaction type to PoW-Reward
+    db_transaction.fees = total_output.round(6)
     puts 'PoW-Reward'
   else
     # set transaction type to normal
+    db_transaction.fees = (total_output - total_input).round(6)
     puts 'normal'
   end
 end
