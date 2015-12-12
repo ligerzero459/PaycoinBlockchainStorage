@@ -12,8 +12,8 @@ highest_block = 0
 hash_array = []
 
 def start_up_rpc
-  paycoinURI = URI::HTTP.build(['ligerzero459:k3ep48dl_s', '127.0.0.1', 9001, nil, nil, nil])
-  silkroad = Silkroad::Client.new paycoinURI, {}
+  paycoin_uri = URI::HTTP.build(['ligerzero459:k3ep48dl_s', '127.0.0.1', 9001, nil, nil, nil])
+  silkroad = Silkroad::Client.new paycoin_uri, {}
 
   silkroad
 end
@@ -101,16 +101,28 @@ decoded_txs.each do |decoded_tx|
 
   vins.each_with_index do |vin, i|
     if vin['coinbase'] != nil
-      puts 'coinbase: ' << vin['coinbase']
+      puts 'coinbase: ' << "Generation & Fees"
     else
-      puts 'input tx: ' << vin['txid']
+      previousOutputTxid = vin['txid']
+      puts 'previous output tx: ' << previousOutputTxid
     end
   end
 
   vouts = result.fetch("vout")
   vouts.each do |vout|
-    puts 'script: ' << vout.fetch("scriptPubKey").fetch("asm")
-    puts ''
+    value = vout.fetch("value")
+    puts 'value: ' << value.to_s
+    n = vout.fetch("n")
+    puts 'n: ' << n.to_s
+    script = vout.fetch("scriptPubKey")
+    asm = script.fetch("asm")
+    puts 'script: ' << asm
+    type = script.fetch("type")
+    puts 'type: ' << type
+    if type == "pubkey" || type == "pubkeyhash"
+      address = script.fetch("addresses")[0]
+      puts 'address: ' << address
+    end
   end
 end
 
