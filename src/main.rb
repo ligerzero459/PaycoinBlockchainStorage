@@ -150,6 +150,7 @@ decoded_txs.each do |decoded_tx|
   total_input = 0
 
   vins.each_with_index do |vin, i|
+    db_input = Input.create(:transactionId => db_transaction.id)
 
     if vin['coinbase'] != nil
       puts 'coinbase: ' << "Generation & Fees"
@@ -158,8 +159,11 @@ decoded_txs.each do |decoded_tx|
       previousOutputTxid = vin['txid']
       puts 'previous output tx: ' << previousOutputTxid
       output = Output[:transactionId => Transaction[:txid => previousOutputTxid].id]
-      puts output.transactionId
+      db_input.outputTxid = previousOutputTxid
+      db_input.outputTransactionId = output.transactionId
       total_input += output.value
+      db_input.value = output.value
+      db_input.save
     end
   end
 
