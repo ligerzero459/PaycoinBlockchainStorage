@@ -25,30 +25,37 @@ def start_up_sequel
     primary_key :id
     String :hash, :unique=>true
     Fixnum :height, :unique=>true
-    String :blockTime
+    DateTime :blockTime
     Float :mint
     String :previousBlockHash
     String :flags
+    index :hash
+    index :height
   end
 
   db.create_table? :raw_blocks do
     primary_key :id
     Fixnum :height
     File :raw
+    index :height
   end
 
   db.create_table? :transactions do
     primary_key :id
     String :txid
     Fixnum :blockId
+    String :type
     Float :totalOutput
     Float :fees
+    index :txid
+    index :blockId
   end
 
   db.create_table? :raw_transactions do
     primary_key :id
     String :txid
     File :raw
+    index :txid
   end
 
   db.create_table? :inputs do
@@ -57,6 +64,8 @@ def start_up_sequel
     Fixnum :outputTransactionId
     String :outputTxid
     Float :value
+    index :transactionId
+    index :outputTransactionId
   end
 
   db.create_table? :outputs do
@@ -67,6 +76,8 @@ def start_up_sequel
     String :type
     String :address
     Float :value
+    index :address
+    index [:transactionId, :value]
   end
 
   db
@@ -75,11 +86,23 @@ end
 silkroad = start_up_rpc
 db = start_up_sequel
 
-# hash = silkroad.rpc 'getblockhash', 2554
-hash = silkroad.rpc 'getblockhash', 403165
+hash = silkroad.rpc 'getblockhash', 2554
+# hash = silkroad.rpc 'getblockhash', 403165
+# hash = silkroad.rpc 'getblockhash', 398014
 block = silkroad.rpc 'getblock', hash
 
 puts JSON.pretty_generate(block)
+
+height = block.fetch("height").to_i
+time = block.fetch("time")
+mint = block.fetch("mint")
+prev_block_hash = block.fetch("previousblockhash")
+flags = block.fetch("flags")
+puts 'height: ' << height.to_s
+puts 'time: ' << time
+puts 'mint: ' << mint.to_s
+puts 'previous block hash: ' << prev_block_hash
+puts 'flags: ' << flags
 
 raw_txs = silkroad.batch do
   block['tx'].each do |tx|
@@ -96,8 +119,10 @@ end
 decoded_txs.each do |decoded_tx|
   puts decoded_tx.fetch("result")
   result = decoded_tx.fetch("result")
-  puts 'txid: ' << result.fetch("txid")
+  txid = result.fetch("txid")
+  puts 'txid: ' << txid
   vins = result.fetch("vin")
+  total_input = 0
 
   vins.each_with_index do |vin, i|
     if vin['coinbase'] != nil
@@ -105,13 +130,17 @@ decoded_txs.each do |decoded_tx|
     else
       previousOutputTxid = vin['txid']
       puts 'previous output tx: ' << previousOutputTxid
+      total_input += 1019.869503
     end
   end
 
   vouts = result.fetch("vout")
+  total_output = 0
+  stake = false
   vouts.each do |vout|
     value = vout.fetch("value")
-    puts 'value: ' << value.to_s
+    total_output += value.round(6)
+    puts 'value: ' << value.round(6).to_s
     n = vout.fetch("n")
     puts 'n: ' << n.to_s
     script = vout.fetch("scriptPubKey")
@@ -119,10 +148,36 @@ decoded_txs.each do |decoded_tx|
     puts 'script: ' << asm
     type = script.fetch("type")
     puts 'type: ' << type
+    if type == 'nonstandard'
+      if asm == '' || asm == 'OP_MICROPRIME'
+        stake = true
+      end
+    end
     if type == "pubkey" || type == "pubkeyhash"
       address = script.fetch("addresses")[0]
       puts 'address: ' << address
     end
+  end
+  puts 'total output: ' << total_output.round(6).to_s
+  if stake && vouts.length > 1
+    #set transaction type to PoS-Reward
+    if vouts[1].fetch("scriptPubKey").fetch("addresses")[0] == vouts[2].fetch("scriptPubKey").fetch("addresses")[0]
+      # Normal stake with no scrape address
+      puts 'Stake with no scrape'
+      stake_amount = (vouts[2].fetch("value") + vouts[1].fetch("value")) - total_input
+      puts 'stake amount: ' << stake_amount.round(6).to_s
+    else
+      # Assume scrape address
+      puts 'Stake with scrape'
+      stake_amount = vouts[2].fetch("value")
+      puts 'stake amount: ' << stake_amount.round(6).to_s
+    end
+  elsif !stake && vouts.length == 1
+    # set transaction type to PoW-Reward
+    puts 'PoW-Reward'
+  else
+    # set transaction type to normal
+    puts 'normal'
   end
 end
 
