@@ -15,7 +15,8 @@ highest_block = 1
 hash_array = []
 
 def start_up_rpc
-  paycoin_uri = URI::HTTP.build(['ligerzero459:k3ep48dl_s', '127.0.0.1', 9001, nil, nil, nil])
+  # RPC credentials here
+  paycoin_uri = URI::HTTP.build(['ligerzero459:password', '127.0.0.1', 9001, nil, nil, nil])
   silkroad = Silkroad::Client.new paycoin_uri, {}
 
   silkroad
