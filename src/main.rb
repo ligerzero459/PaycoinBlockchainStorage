@@ -219,12 +219,12 @@ sleep(3)
       if vouts[1].fetch("scriptPubKey").fetch("addresses")[0] == vouts[2].fetch("scriptPubKey").fetch("addresses")[0]
         # Normal stake with no scrape address
         stake_amount = total_output - total_input
-        db_transaction.fees = stake_amount.rount(6)
+        db_transaction.fees = stake_amount.round(6)
         db_transaction.type = 'PoS-Reward'
       else
         # Assume scrape address
         stake_amount = vouts[2].fetch("value")
-        db_transaction.fees = stake_amount.rount(6)
+        db_transaction.fees = stake_amount.round(6)
         db_transaction.type = 'PoS-Reward'
       end
     elsif stake && vouts.length == 2
