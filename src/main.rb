@@ -22,7 +22,7 @@ def start_up_rpc
   silkroad
 end
 
-def start_up_sequel
+def start_up_sequel(silkroad)
   db = Sequel.sqlite('../XPYBlockchain.sqlite')
 
   db.create_table? :blocks do
@@ -95,14 +95,26 @@ def start_up_sequel
   # Put genesis block into db if not exists
   genesis_block = db[:blocks]
   if genesis_block.count == 0
-    Block.create(
-        :hash => '00000e5695fbec8e36c10064491946ee3b723a9fa640fc0e25d3b8e4737e53e3',
-        :height => 0,
-        :blockTime => '2014-11-29 00:00:10 UTC',
-        :mint => 0.0,
-        :previousBlockHash => '',
-        :flags => 'proof-of-work stake-modifier'
-    )
+    client_info = silkroad.rpc 'getinfo'
+    if client_info.fetch("testnet")
+      Block.create(
+          :hash => '0000000f6bb18c77c5b39a25fa03e4c90bffa5cc10d6d9758a1bed5adcee9404',
+          :height => 0,
+          :blockTime => '2014-11-29 00:00:10 UTC',
+          :mint => 0.0,
+          :previousBlockHash => '',
+          :flags => 'proof-of-work stake-modifier'
+      )
+    else
+      Block.create(
+          :hash => '00000e5695fbec8e36c10064491946ee3b723a9fa640fc0e25d3b8e4737e53e3',
+          :height => 0,
+          :blockTime => '2014-11-29 00:00:10 UTC',
+          :mint => 0.0,
+          :previousBlockHash => '',
+          :flags => 'proof-of-work stake-modifier'
+      )
+    end
     puts 'Genesis block saved.'
   end
 
@@ -110,7 +122,7 @@ def start_up_sequel
 end
 
 silkroad = start_up_rpc
-db = start_up_sequel
+db = start_up_sequel(silkroad)
 
 block_count =  silkroad.rpc 'getblockcount'
 puts 'Total block count: ' << block_count.to_s
