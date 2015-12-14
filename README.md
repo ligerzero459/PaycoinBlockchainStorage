@@ -16,7 +16,7 @@ Clone the repo, navigate to the src directory and run
 
 `bundle install`
 
-After all required gems are installed, make sure that your wallet is running with `rpcuser=paycoinrpc, rpcpassword=passwprd, rpcport=9001` in your `paycoin.conf`. To run the parser, type
+After all required gems are installed, make sure that your wallet is running with `rpcuser=paycoinrpc, rpcpassword=password, rpcport=9001` in your `paycoin.conf`. To run the parser, type
 
 `ruby main.rb`
 
