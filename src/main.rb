@@ -23,7 +23,15 @@ def start_up_rpc
 end
 
 def start_up_sequel(silkroad)
-  db = Sequel.sqlite('../XPYBlockchain.sqlite')
+  @db_file = ''
+  client_info = silkroad.rpc 'getinfo'
+  if client_info.fetch('testnet')
+    @db_file = '../XPYBlockchainTestnet.sqlite'
+  else
+    @db_file = '../XPYBlockchain.sqlite'
+  end
+
+  db = Sequel.sqlite(@db_file)
 
   db.create_table? :blocks do
     primary_key :id
@@ -95,7 +103,6 @@ def start_up_sequel(silkroad)
   # Put genesis block into db if not exists
   genesis_block = db[:blocks]
   if genesis_block.count == 0
-    client_info = silkroad.rpc 'getinfo'
     if client_info.fetch("testnet")
       Block.create(
           :hash => '0000000f6bb18c77c5b39a25fa03e4c90bffa5cc10d6d9758a1bed5adcee9404',
