@@ -35,13 +35,13 @@ def start_up_sequel(silkroad)
 
   db.create_table? :blocks do
     primary_key :id
-    String :hash, :unique=>true
+    String :blockHash
     Fixnum :height, :unique=>true
     DateTime :blockTime
     Float :mint
     String :previousBlockHash
     String :flags
-    index :hash
+    index :blockHash
     index :height
   end
 
@@ -55,12 +55,12 @@ def start_up_sequel(silkroad)
   db.create_table? :transactions do
     primary_key :id
     String :txid
-    Fixnum :blockId
+    Fixnum :block_id
     String :type
     Float :totalOutput
     Float :fees
     index :txid
-    index :blockId
+    index :block_id
   end
 
   db.create_table? :raw_transactions do
@@ -72,24 +72,24 @@ def start_up_sequel(silkroad)
 
   db.create_table? :inputs do
     primary_key :id
-    Fixnum :transactionId
+    Fixnum :transaction_id
     Fixnum :outputTransactionId
     String :outputTxid
     Float :value
-    index :transactionId
+    index :transaction_id
     index :outputTransactionId
   end
 
   db.create_table? :outputs do
     primary_key :id
-    Fixnum :transactionId
+    Fixnum :transaction_id
     Fixnum :n
     String :script
     String :type
     String :address
     Float :value
     index :address
-    index [:transactionId, :value]
+    index [:transaction_id, :value]
   end
 
   # Object models for tables
@@ -105,7 +105,7 @@ def start_up_sequel(silkroad)
   if genesis_block.count == 0
     if client_info.fetch("testnet")
       Block.create(
-          :hash => '0000000f6bb18c77c5b39a25fa03e4c90bffa5cc10d6d9758a1bed5adcee9404',
+          :blockHash => '0000000f6bb18c77c5b39a25fa03e4c90bffa5cc10d6d9758a1bed5adcee9404',
           :height => 0,
           :blockTime => '2014-11-29 00:00:10 UTC',
           :mint => 0.0,
@@ -114,7 +114,7 @@ def start_up_sequel(silkroad)
       )
     else
       Block.create(
-          :hash => '00000e5695fbec8e36c10064491946ee3b723a9fa640fc0e25d3b8e4737e53e3',
+          :blockHash => '00000e5695fbec8e36c10064491946ee3b723a9fa640fc0e25d3b8e4737e53e3',
           :height => 0,
           :blockTime => '2014-11-29 00:00:10 UTC',
           :mint => 0.0,
@@ -142,7 +142,7 @@ while true
 
     sleep(3)
 
-    (highest_block..block_count).each do |block_num| hash = silkroad.rpc 'getblockhash', block_num
+    (highest_block..200).each do |block_num| hash = silkroad.rpc 'getblockhash', block_num
     block = silkroad.rpc 'getblock', hash
 
     db_raw_block = RawBlock.new
@@ -155,7 +155,7 @@ while true
     mint = block.fetch("mint")
     prev_block_hash = block.fetch("previousblockhash")
     flags = block.fetch("flags")
-    db_block.hash = hash
+    db_block.blockHash = hash
     db_block.height = height
     db_raw_block.height = height
     db_block.blockTime = time
@@ -185,7 +185,7 @@ while true
       RawTransaction.create(:txid => txid, :raw => JSON.pretty_generate(decoded_tx))
       db_transaction = Transaction.create(
           :txid => txid,
-          :blockId => db_block.id
+          :block_id => db_block.id
       )
 
       vins = result.fetch("vin")
@@ -193,16 +193,16 @@ while true
 
       vins.each_with_index do |vin, i|
         db_input = Input.create(
-            :transactionId => db_transaction.id
+            :transaction_id => db_transaction.id
         )
 
         if vin['coinbase'] != nil
           reward_block = true
         else
           previousOutputTxid = vin['txid']
-          output = Output[:transactionId => Transaction[:txid => previousOutputTxid].id]
+          output = Output[:transaction_id => Transaction[:txid => previousOutputTxid].id]
           db_input.outputTxid = previousOutputTxid
-          db_input.outputTransactionId = output.transactionId
+          db_input.outputTransactionId = output.transaction_id
           total_input += output.value
           db_input.value = output.value
           db_input.save
@@ -233,7 +233,7 @@ while true
 
         # Save output to database
         Output.create(
-            :transactionId => db_transaction.id,
+            :transaction_id => db_transaction.id,
             :n => n, :script => asm,
             :type => type,
             :address => address,
