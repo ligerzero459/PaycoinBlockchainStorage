@@ -131,140 +131,151 @@ end
 silkroad = start_up_rpc
 db = start_up_sequel(silkroad)
 
-block_count =  silkroad.rpc 'getblockcount'
-puts 'Total block count: ' << block_count.to_s
 highest_block = db[:blocks].count != 0 ? (db[:blocks].max(:height)) + 1 : 1
 
-sleep(3)
+while true
+  block_count = silkroad.rpc 'getblockcount'
+  if block_count < highest_block
+    puts 'No new blocks found.'
+  else
+    puts 'Total block count: ' << block_count.to_s
 
-(highest_block..block_count).each do |block_num|
-  hash = silkroad.rpc 'getblockhash', block_num
-  block = silkroad.rpc 'getblock', hash
+    sleep(3)
 
-  db_raw_block = RawBlock.new
-  db_raw_block.raw = JSON.pretty_generate(block)
+    (highest_block..block_count).each do |block_num| hash = silkroad.rpc 'getblockhash', block_num
+    block = silkroad.rpc 'getblock', hash
 
-  db_block = Block.new
+    db_raw_block = RawBlock.new
+    db_raw_block.raw = JSON.pretty_generate(block)
 
-  height = block.fetch("height").to_i
-  time = block.fetch("time")
-  mint = block.fetch("mint")
-  prev_block_hash = block.fetch("previousblockhash")
-  flags = block.fetch("flags")
-  db_block.hash = hash
-  db_block.height = height
-  db_raw_block.height = height
-  db_block.blockTime = time
-  db_block.mint = mint
-  db_block.previousBlockHash = prev_block_hash
-  db_block.flags = flags
-  db_block.save
-  db_raw_block.save
+    db_block = Block.new
 
-  raw_txs = silkroad.batch do
-    block['tx'].each do |tx|
-      rpc 'getrawtransaction', tx
-    end
-  end
+    height = block.fetch("height").to_i
+    time = block.fetch("time")
+    mint = block.fetch("mint")
+    prev_block_hash = block.fetch("previousblockhash")
+    flags = block.fetch("flags")
+    db_block.hash = hash
+    db_block.height = height
+    db_raw_block.height = height
+    db_block.blockTime = time
+    db_block.mint = mint
+    db_block.previousBlockHash = prev_block_hash
+    db_block.flags = flags
+    db_block.save
+    db_raw_block.save
 
-  decoded_txs = silkroad.batch do
-    raw_txs.each do |raw_tx|
-      rpc 'decoderawtransaction', raw_tx['result']
-    end
-  end
-
-  decoded_txs.each do |decoded_tx|
-    result = decoded_tx.fetch("result")
-    txid = result.fetch("txid")
-    reward_block = false
-
-    RawTransaction.create(:txid => txid, :raw => JSON.pretty_generate(decoded_tx))
-    db_transaction = Transaction.create(:txid => txid, :blockId => db_block.id)
-
-    vins = result.fetch("vin")
-    total_input = 0
-
-    vins.each_with_index do |vin, i|
-      db_input = Input.create(:transactionId => db_transaction.id)
-
-      if vin['coinbase'] != nil
-        reward_block = true
-      else
-        previousOutputTxid = vin['txid']
-        output = Output[:transactionId => Transaction[:txid => previousOutputTxid].id]
-        db_input.outputTxid = previousOutputTxid
-        db_input.outputTransactionId = output.transactionId
-        total_input += output.value
-        db_input.value = output.value
-        db_input.save
+    raw_txs = silkroad.batch do
+      block['tx'].each do |tx|
+        rpc 'getrawtransaction', tx
       end
     end
 
-    vouts = result.fetch("vout")
-    total_output = 0
-    stake = false
+    decoded_txs = silkroad.batch do
+      raw_txs.each do |raw_tx|
+        rpc 'decoderawtransaction', raw_tx['result']
+      end
+    end
 
-    # Loop through all outputs
-    vouts.each do |vout|
-      value = vout.fetch("value")
-      total_output += value.round(6)
-      n = vout.fetch("n")
-      script = vout.fetch("scriptPubKey")
-      asm = script.fetch("asm")
-      type = script.fetch("type")
-      if type == 'nonstandard'
-        if asm == '' || asm == 'OP_MICROPRIME'
-          stake = true
+    decoded_txs.each do |decoded_tx|
+      result = decoded_tx.fetch("result")
+      txid = result.fetch("txid")
+      reward_block = false
+
+      RawTransaction.create(:txid => txid, :raw => JSON.pretty_generate(decoded_tx))
+      db_transaction = Transaction.create(
+          :txid => txid,
+          :blockId => db_block.id
+      )
+
+      vins = result.fetch("vin")
+      total_input = 0
+
+      vins.each_with_index do |vin, i|
+        db_input = Input.create(
+            :transactionId => db_transaction.id
+        )
+
+        if vin['coinbase'] != nil
+          reward_block = true
+        else
+          previousOutputTxid = vin['txid']
+          output = Output[:transactionId => Transaction[:txid => previousOutputTxid].id]
+          db_input.outputTxid = previousOutputTxid
+          db_input.outputTransactionId = output.transactionId
+          total_input += output.value
+          db_input.value = output.value
+          db_input.save
         end
       end
-      address = ''
-      if type == "pubkey" || type == "pubkeyhash"
-        address = script.fetch("addresses")[0]
+
+      vouts = result.fetch("vout")
+      total_output = 0
+      stake = false
+
+      # Loop through all outputs
+      vouts.each do |vout|
+        value = vout.fetch("value")
+        total_output += value.round(6)
+        n = vout.fetch("n")
+        script = vout.fetch("scriptPubKey")
+        asm = script.fetch("asm")
+        type = script.fetch("type")
+        if type == 'nonstandard'
+          if asm == '' || asm == 'OP_MICROPRIME'
+            stake = true
+          end
+        end
+        address = ''
+        if type == "pubkey" || type == "pubkeyhash"
+          address = script.fetch("addresses")[0]
+        end
+
+        # Save output to database
+        Output.create(
+            :transactionId => db_transaction.id,
+            :n => n, :script => asm,
+            :type => type,
+            :address => address,
+            :value => value
+        )
       end
 
-      # Save output to database
-      Output.create(
-          :transactionId => db_transaction.id,
-          :n => n,
-          :script => asm,
-          :type => type,
-          :address => address,
-          :value => value
-      )
-    end
-
-    db_transaction.totalOutput = total_output.round(6)
-    if stake && vouts.length > 2
-      #set transaction type to PoS-Reward
-      if vouts[1].fetch("scriptPubKey").fetch("addresses")[0] == vouts[2].fetch("scriptPubKey").fetch("addresses")[0]
-        # Normal stake with no scrape address
+      db_transaction.totalOutput = total_output.round(6)
+      if stake && vouts.length > 2
+        #set transaction type to PoS-Reward
+        if vouts[1].fetch("scriptPubKey").fetch("addresses")[0] == vouts[2].fetch("scriptPubKey").fetch("addresses")[0]
+          # Normal stake with no scrape address
+          stake_amount = total_output - total_input
+          db_transaction.fees = stake_amount.round(6)
+          db_transaction.type = 'PoS-Reward'
+        else # Assume scrape address
+          stake_amount = vouts[2].fetch("value")
+          db_transaction.fees = stake_amount.round(6)
+          db_transaction.type = 'PoS-Reward'
+        end
+      elsif stake && vouts.length == 2
+        # Stake edge case where stake only has one transaction
         stake_amount = total_output - total_input
         db_transaction.fees = stake_amount.round(6)
         db_transaction.type = 'PoS-Reward'
-      else
-        # Assume scrape address
-        stake_amount = vouts[2].fetch("value")
-        db_transaction.fees = stake_amount.round(6)
-        db_transaction.type = 'PoS-Reward'
+      elsif !stake && reward_block
+        # set transaction type to PoW-Reward
+        db_transaction.fees = total_output.round(6)
+        db_transaction.type ='PoW-Reward'
+      else # set transaction type to normal
+        db_transaction.fees = (total_input - total_output).round(6)
+        db_transaction.type = 'normal'
       end
-    elsif stake && vouts.length == 2
-      # Stake edge case where stake only has one transaction
-      stake_amount = total_output - total_input
-      db_transaction.fees = stake_amount.round(6)
-      db_transaction.type = 'PoS-Reward'
-    elsif !stake && reward_block
-      # set transaction type to PoW-Reward
-      db_transaction.fees = total_output.round(6)
-      db_transaction.type ='PoW-Reward'
-    else
-      # set transaction type to normal
-      db_transaction.fees = (total_input - total_output).round(6)
-      db_transaction.type = 'normal'
+      db_transaction.save
     end
-    db_transaction.save
+
+    puts 'Block saved: #' << db_block.height.to_s
+    # Increase highest block read
+    highest_block += 1
+    end
   end
 
-  puts 'Block saved: #' << db_block.height.to_s
-  # Increase highest block read
-  highest_block += 1
+  puts 'Checking for new blocks in 60 seconds...'
+  sleep(60)
 end
