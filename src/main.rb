@@ -270,7 +270,7 @@ while true
       db_transaction.save
     end
 
-    puts 'Block saved: #' << db_block.height.to_s
+    puts 'Block saved: #' << db_block.height.to_s << '/' << block_count.to_s
     # Increase highest block read
     highest_block += 1
     end
