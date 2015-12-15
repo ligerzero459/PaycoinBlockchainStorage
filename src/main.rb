@@ -347,5 +347,4 @@ cli = Cliqr.interface do
   end
 end
 
-
 cli.execute(ARGV)
