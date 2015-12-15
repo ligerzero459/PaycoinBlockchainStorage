@@ -18,10 +18,33 @@ Clone the repo, navigate to the src directory and run
 
 After all required gems are installed, make sure that your wallet is running with `rpcuser=paycoinrpc, rpcpassword=password, rpcport=9001` in your `paycoin.conf`. To run the parser, type
 
-`ruby main.rb`
+`ruby main.rb parse`
 
 inside of the src directory.
 
+##### Usage
+
+To run PBS after installation
+
+`ruby main.rb parse`
+
+**Available options:**
+
+    --config  :  Load a config file in place of RPC Information
+    --user  :  RPC Username
+    --pass  :  RPC Username (default => "rpcpass")
+    --port  :  <numeric> RPC Username (default => 9001)
+    --host  :  RPC Hostname (default => "127.0.0.1")
+    --help, -h  :  Get helpful information for action "pbs parse" along with its usage information.
+
+The main command will allow the following commands.
+
+**Available commands:**
+
+    parse -- Parse the Blockchain into an SQLite database
+    help -- The help action for command "pbs" which provides details and usage information on how to use the command.
+    version -- Get version information for command "pbs".
+
 ####TODO:
 ***
-Command-line args for rpcuser, password and port
+Speed it up
