@@ -6,9 +6,9 @@ require 'sequel'
 require 'json'
 require 'cliqr'
 require 'parseconfig'
+require 'os'
 
 # Internal dependancies/models
-
 
 # Variable declarations
 silkroad = nil
@@ -29,7 +29,7 @@ cli = Cliqr.interface do
   action :parse do
     description 'Parse the Blockchain into an SQLite database'
 
-    option :config do
+    option :loadconfig do
       description 'Load a config file in place of RPC Information'
     end
 
@@ -55,9 +55,27 @@ cli = Cliqr.interface do
 
     handler do
 
-      @config = 'paycoin.conf'
+      if OS.windows?
+        @appdata = ENV['appdata']
+        @config = "#@appdata/Paycoin/paycoin.conf"
+      elsif OS.mac?
+        @homedir = ENV['HOME']
+        @config = "#@homedir/Library/Application Support/Paycoin/paycoin.conf"
+        puts @config
+      elsif OS.posix?
+        @homedir = ENV['HOME']
+        @config = "#@homedir/.paycoin/paycoin.conf"
+      else
+        @config = 'paycoin.conf'
+      end
+
       if @config
-        @coin_config = ParseConfig.new(@config)
+        if @loadconfig
+          @coin_config = ParseConfig.new(@loadconfig)
+        else
+          @coin_config = ParseConfig.new(@config)
+        end
+        
         if !@user
           @user = @coin_config['rpcuser']
         end
@@ -71,7 +89,7 @@ cli = Cliqr.interface do
           @port = @coin_config['rpcport']
         end
       else
-        @port = "9001"
+        @port = Integer('9001')
         @user = "paycoinrpc"
         @pass = "password"
         @host = "127.0.0.1"
@@ -79,7 +97,7 @@ cli = Cliqr.interface do
 
       def start_up_rpc
         # RPC credentials here
-        paycoin_uri = URI::HTTP.build(["#@user:#@pass", "127.0.0.1", 9001, nil, nil, nil])
+        paycoin_uri = URI::HTTP.build(["#@user:#@pass", "#@host", Integer(@port), nil, nil, nil])
         silkroad = Silkroad::Client.new paycoin_uri, {}
         silkroad
       end
