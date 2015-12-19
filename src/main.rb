@@ -280,11 +280,11 @@ cli = Cliqr.interface do
                 reward_block = true
               else
                 previousOutputTxid = vin['txid']
-                output = Output[:transaction_id => Transaction[:txid => previousOutputTxid].id]
+                output = Transaction[:txid => previousOutputTxid]
                 db_input.outputTxid = previousOutputTxid
-                db_input.outputTransactionId = output.transaction_id
-                total_input += output.value
-                db_input.value = output.value
+                db_input.outputTransactionId = output.id
+                total_input += output.totalOutput
+                db_input.value = output.totalOutput
                 db_input.save
               end
             end
