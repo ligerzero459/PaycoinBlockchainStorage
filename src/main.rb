@@ -123,6 +123,7 @@ cli = Cliqr.interface do
           Float :difficulty
           Float :mint
           String :previousBlockHash
+          String :nextBlockHash
           String :flags
           index :blockHash
           index :height
@@ -175,6 +176,10 @@ cli = Cliqr.interface do
           index [:transaction_id, :value]
         end
 
+        db.create_table? :schema_info do
+          Fixnum :version, :null => false, :default => 1
+        end
+
         # Object models for tables
         require './models/block'
         require './models/raw_block'
@@ -189,8 +194,11 @@ cli = Cliqr.interface do
           if client_info.fetch("testnet")
             Block.create(
                 :blockHash => '0000000f6bb18c77c5b39a25fa03e4c90bffa5cc10d6d9758a1bed5adcee9404',
+                :blockSize => 217,
                 :height => 0,
+                :merkleRoot => '1552f748afb7ff4e04776652c5a17d4073e60b7004e9bca639a99edb82aeb1a0',
                 :blockTime => '2014-11-29 00:00:10 UTC',
+                :difficulty => 0.06249911,
                 :mint => 0.0,
                 :previousBlockHash => '',
                 :flags => 'proof-of-work stake-modifier'
@@ -198,8 +206,11 @@ cli = Cliqr.interface do
           else
             Block.create(
                 :blockHash => '00000e5695fbec8e36c10064491946ee3b723a9fa640fc0e25d3b8e4737e53e3',
+                :blockSize => 217,
                 :height => 0,
+                :merkleRoot => '1552f748afb7ff4e04776652c5a17d4073e60b7004e9bca639a99edb82aeb1a0',
                 :blockTime => '2014-11-29 00:00:10 UTC',
+                :difficulty => 0.00024414,
                 :mint => 0.0,
                 :previousBlockHash => '',
                 :flags => 'proof-of-work stake-modifier'
@@ -234,19 +245,21 @@ cli = Cliqr.interface do
           db_block = Block.new
 
           height = block.fetch("height").to_i
-          time = block.fetch("time")
-          mint = block.fetch("mint")
-          prev_block_hash = block.fetch("previousblockhash")
-          flags = block.fetch("flags")
           db_block.blockHash = hash
           db_block.height = height
           db_raw_block.height = height
-          db_block.blockTime = time
-          db_block.mint = mint
-          db_block.previousBlockHash = prev_block_hash
-          db_block.flags = flags
+          db_block.blockSize = block.fetch("size").to_i
+          db_block.merkleRoot = block.fetch("merkleroot")
+          db_block.difficulty = block.fetch("difficulty").to_f
+          db_block.blockTime = block.fetch("time")
+          db_block.mint = block.fetch("mint")
+          db_block.previousBlockHash = block.fetch("previousblockhash")
+          db_block.flags = block.fetch("flags")
           db_block.save
           db_raw_block.save
+
+          # Update previous block's 'nextBlockHash'
+          Block[:blockHash => db_block.previousBlockHash].update(:nextBlockHash => db_block.blockHash)
 
           raw_txs = silkroad.batch do
             block['tx'].each do |tx|
