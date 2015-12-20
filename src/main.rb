@@ -249,7 +249,7 @@ cli = Cliqr.interface do
 
           sleep(3)
 
-          (highest_block..200).each do |block_num| hash = silkroad.rpc 'getblockhash', block_num
+          (highest_block..block_count).each do |block_num| hash = silkroad.rpc 'getblockhash', block_num
           block = silkroad.rpc 'getblock', hash
 
           db_raw_block = RawBlock.new
