@@ -22,6 +22,12 @@ After all required gems are installed, make sure that your wallet is running wit
 
 inside of the src directory.
 
+##### Upgrading database
+
+After pulling a new version, run ensure you run Sequel migrations to get your database up to date. For SQLite, run
+
+`sequel -m src/migrations sqlite://path_to_database`
+
 ##### Usage
 
 To run PBS after installation
