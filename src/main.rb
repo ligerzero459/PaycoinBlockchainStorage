@@ -116,8 +116,11 @@ cli = Cliqr.interface do
         db.create_table? :blocks do
           primary_key :id
           String :blockHash
+          Fixnum :blockSize
           Fixnum :height, :unique=>true
+          String :merkleRoot
           DateTime :blockTime
+          Float :difficulty
           Float :mint
           String :previousBlockHash
           String :flags
