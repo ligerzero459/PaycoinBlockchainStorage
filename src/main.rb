@@ -11,6 +11,8 @@ require 'os'
 # Internal dependancies/models
 
 # Variable declarations
+db_version = 2
+
 silkroad = nil
 db = nil
 highest_block = 1
@@ -102,7 +104,7 @@ cli = Cliqr.interface do
         silkroad
       end
 
-      def start_up_sequel(silkroad)
+      def start_up_sequel(silkroad, db_version)
         @db_file = ''
         client_info = silkroad.rpc 'getinfo'
         if client_info.fetch('testnet')
@@ -177,8 +179,19 @@ cli = Cliqr.interface do
         end
 
         db.create_table? :schema_info do
-          Fixnum :version, :null => false, :default => 1
+          Fixnum :version, :null => false, :default => db_version
         end
+
+        saved_version = db[:schema_info].all
+        if saved_version.count == 0
+          db.run('INSERT INTO schema_info VALUES(?);', db_version)
+        elsif saved_version.count == 1
+          if saved_version[0][:version] != db_version
+            puts "Database version out of date. Run migrations to update database. Refer to README.md for instructions."
+            exit
+          end
+        end
+
 
         # Object models for tables
         require './models/block'
@@ -223,7 +236,7 @@ cli = Cliqr.interface do
       end
 
       silkroad = start_up_rpc
-      db = start_up_sequel(silkroad)
+      db = start_up_sequel(silkroad, db_version)
 
       highest_block = db[:blocks].count != 0 ? (db[:blocks].max(:height)) + 1 : 1
 
@@ -236,7 +249,7 @@ cli = Cliqr.interface do
 
           sleep(3)
 
-          (highest_block..block_count).each do |block_num| hash = silkroad.rpc 'getblockhash', block_num
+          (highest_block..200).each do |block_num| hash = silkroad.rpc 'getblockhash', block_num
           block = silkroad.rpc 'getblock', hash
 
           db_raw_block = RawBlock.new
