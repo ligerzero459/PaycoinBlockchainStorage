@@ -123,6 +123,7 @@ cli = Cliqr.interface do
           Float :difficulty
           Float :mint
           String :previousBlockHash
+          String :nextBlockHash
           String :flags
           index :blockHash
           index :height
@@ -173,6 +174,10 @@ cli = Cliqr.interface do
           Float :value
           index :address
           index [:transaction_id, :value]
+        end
+
+        db.create_table? :schema_info do
+          Fixnum :version, :null => false, :default => 1
         end
 
         # Object models for tables
