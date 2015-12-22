@@ -11,7 +11,7 @@ require 'os'
 # Internal dependancies/models
 
 # Variable declarations
-db_version = 2
+db_version = 3
 
 silkroad = nil
 db = nil
@@ -159,6 +159,7 @@ cli = Cliqr.interface do
         db.create_table? :inputs do
           primary_key :id
           Fixnum :transaction_id
+          Fixnum :vout
           Fixnum :outputTransactionId
           String :outputTxid
           Float :value
