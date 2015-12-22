@@ -4,11 +4,9 @@ Paycoin Blockchain Storage uses RPC commands to get data from a local wallet and
 
 Works with wallets in both mainnet and testnet modes, checking which mode the wallet is running before putting the correct genesis block into the database. On Linux and Mac, this will complete at a decent speed. However, due to RPC issues, on Windows this will run incredibly slowly.
 
-Currently no support for command line arguments, but that is on the list of things to add.
-
 ####Running PBS:
 ***
-Ensure you have Ruby 2.2.1 installed. Instructions to install Ruby correctly can be found on the [RVM site](http://rvm.io/). Once installed, you will also need Bundler, which can be installed through RubyGems.
+Ensure you have at least Ruby 2.2.1 installed. Instructions to install Ruby correctly can be found on the [RVM site](http://rvm.io/). Once installed, you will also need Bundler, which can be installed through RubyGems.
 
 `gem install bundler`
 
@@ -27,6 +25,10 @@ inside of the src directory.
 After pulling a new version, run ensure you run Sequel migrations to get your database up to date. For SQLite, run
 
 `sequel -m src/migrations sqlite://path_to_database`
+
+During the first run of the application, the current database version will be set in schema_info. If the version in the db does not match the version in the application
+after an update, the application will not start and it will inform you to run the migration before trying again to ensure that you do not corrupt your database or cause 
+crashes looking for columns that don't exist.
 
 ##### Usage
 
