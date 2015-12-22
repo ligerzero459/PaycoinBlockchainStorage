@@ -1,6 +1,7 @@
 require 'json'
 
 require './src/models/input'
+require './src/models/output'
 require './src/models/transaction'
 require './src/models/raw_transaction'
 
@@ -21,7 +22,8 @@ Sequel.migration do
           old_input = Input.where(:vout=>nil, :outputTxid=> vin['txid']).first
           old_input.vout = vin['vout'].to_i
 
-          output = Output[]
+          output = Output[:transaction_id=>old_input.outputTransactionId, :n=>old_input.vout]
+          old_input.value = output.value
 
           old_input.save
         end
