@@ -5,6 +5,7 @@ require './src/models/raw_block'
 
 Sequel.migration do
   up do
+    puts '002_add_new_block_data.rb UP'
     alter_table(:blocks) do
       add_column :blockSize, Fixnum
       add_column :merkleRoot, String
@@ -21,6 +22,7 @@ Sequel.migration do
 
     raw_blocks = RawBlock.all
     raw_blocks.each do |raw_block|
+      puts raw_block.height.to_s << "/" << raw_blocks.count.to_s << " blocks processed"
       block_info = raw_block.raw
       block_json = JSON.parse(block_info)
       Block[:height => raw_block.height].update(
@@ -32,6 +34,7 @@ Sequel.migration do
   end
 
   down do
+    puts '002_add_new_block_data.rb DOWN'
     alter_table(:blocks) do
       drop_column :blockSize
       drop_column :merkleRoot

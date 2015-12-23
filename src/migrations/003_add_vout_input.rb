@@ -7,6 +7,7 @@ require './src/models/raw_transaction'
 
 Sequel.migration do
   up do
+    puts '003_add_vout_input.rb UP'
     alter_table(:inputs) do
       add_column :vout, Fixnum
     end
@@ -14,7 +15,8 @@ Sequel.migration do
     Input.set_dataset(:inputs)
 
     raw_transactions = RawTransaction.all
-    raw_transactions.each do |raw_tx|
+    raw_transactions.each_with_index do |raw_tx, index|
+      puts (index + 1).to_s << "/" << raw_transactions.count.to_s << " transactions processed"
       json_tx = JSON.parse(raw_tx.raw)
       vins = json_tx.fetch("result").fetch("vin")
       vins.each do |vin|
@@ -29,9 +31,17 @@ Sequel.migration do
         end
       end
     end
+
+    transactions = Transaction.where(:type=>'normal')
+    transactions.each do |tx|
+      total_input = Input.where(:transaction_id=>tx.id).sum(:value)
+      tx.fees = (total_input - tx.totalOutput).round(6)
+      tx.save
+    end
   end
 
   down do
+    puts '003_add_vout_input.rb DOWN'
     alter_table(:inputs) do
       drop_column :vout
     end
