@@ -185,7 +185,7 @@ cli = Cliqr.interface do
 
         saved_version = db[:schema_info].all
         if saved_version.count == 0
-          db.run('INSERT INTO schema_info VALUES(?);', db_version)
+          db[:schema_info].insert(:version => db_version)
         elsif saved_version.count == 1
           if saved_version[0][:version] != db_version
             puts "Database version out of date. Run migrations to update database. Refer to README.md for instructions."
@@ -309,12 +309,14 @@ cli = Cliqr.interface do
               if vin['coinbase'] != nil
                 reward_block = true
               else
+                db_input.vout = vin['vout']
                 previousOutputTxid = vin['txid']
-                output = Transaction[:txid => previousOutputTxid]
+                output_tx = Transaction[:txid => previousOutputTxid]
                 db_input.outputTxid = previousOutputTxid
-                db_input.outputTransactionId = output.id
-                total_input += output.totalOutput
-                db_input.value = output.totalOutput
+                db_input.outputTransactionId = output_tx.id
+                output = Output[:transaction_id => output_tx.id, :n => db_input.vout]
+                total_input += output.value.round(6)
+                db_input.value = output.value.round(6)
                 db_input.save
               end
             end
