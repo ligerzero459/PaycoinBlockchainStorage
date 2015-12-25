@@ -110,8 +110,7 @@ cli = Cliqr.interface do
         if client_info.fetch('testnet')
           @db_file = '../XPYBlockchainTestnet.sqlite'
         else
-          # @db_file = '../XPYBlockchain.sqlite'
-          @db_file = '/Users/ryanmottley/RubymineProjects/PaycoinBlockExplorer/db/XPYBlockchain.sqlite'
+          @db_file = '../XPYBlockchain.sqlite'
         end
 
         db = Sequel.sqlite(@db_file)
@@ -251,7 +250,7 @@ cli = Cliqr.interface do
 
           sleep(3)
 
-          (highest_block..20000).each do |block_num|
+          (highest_block..block_count).each do |block_num|
             db.transaction do
               hash = silkroad.rpc 'getblockhash', block_num
               block = silkroad.rpc 'getblock', hash
