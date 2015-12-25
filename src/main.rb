@@ -11,7 +11,7 @@ require 'os'
 # Internal dependancies/models
 
 # Variable declarations
-db_version = 3
+db_version = 4
 
 silkroad = nil
 db = nil
@@ -250,141 +250,152 @@ cli = Cliqr.interface do
 
           sleep(3)
 
-          (highest_block..block_count).each do |block_num| hash = silkroad.rpc 'getblockhash', block_num
-          block = silkroad.rpc 'getblock', hash
+          (highest_block..block_count).each do |block_num|
+            db.transaction do
+              hash = silkroad.rpc 'getblockhash', block_num
+              block = silkroad.rpc 'getblock', hash
 
-          db_raw_block = RawBlock.new
-          db_raw_block.raw = JSON.pretty_generate(block)
+              db_raw_block = RawBlock.new
+              db_raw_block.raw = JSON.pretty_generate(block)
 
-          db_block = Block.new
+              db_block = Block.new
 
-          height = block.fetch("height").to_i
-          db_block.blockHash = hash
-          db_block.height = height
-          db_raw_block.height = height
-          db_block.blockSize = block.fetch("size").to_i
-          db_block.merkleRoot = block.fetch("merkleroot")
-          db_block.difficulty = block.fetch("difficulty").to_f
-          db_block.blockTime = block.fetch("time")
-          db_block.mint = block.fetch("mint")
-          db_block.previousBlockHash = block.fetch("previousblockhash")
-          db_block.flags = block.fetch("flags")
-          db_block.save
-          db_raw_block.save
+              height = block.fetch("height").to_i
+              db_block.blockHash = hash
+              db_block.height = height
+              db_raw_block.height = height
+              db_block.blockSize = block.fetch("size").to_i
+              db_block.merkleRoot = block.fetch("merkleroot")
+              db_block.difficulty = block.fetch("difficulty").to_f
+              db_block.blockTime = block.fetch("time")
+              db_block.mint = block.fetch("mint")
+              db_block.previousBlockHash = block.fetch("previousblockhash")
+              db_block.flags = block.fetch("flags")
+              db_block.save
+              db_raw_block.save
 
-          # Update previous block's 'nextBlockHash'
-          Block[:blockHash => db_block.previousBlockHash].update(:nextBlockHash => db_block.blockHash)
+              # Update previous block's 'nextBlockHash'
+              Block[:blockHash => db_block.previousBlockHash].update(:nextBlockHash => db_block.blockHash)
 
-          raw_txs = silkroad.batch do
-            block['tx'].each do |tx|
-              rpc 'getrawtransaction', tx
-            end
-          end
-
-          decoded_txs = silkroad.batch do
-            raw_txs.each do |raw_tx|
-              rpc 'decoderawtransaction', raw_tx['result']
-            end
-          end
-
-          decoded_txs.each do |decoded_tx|
-            result = decoded_tx.fetch("result")
-            txid = result.fetch("txid")
-            reward_block = false
-
-            RawTransaction.create(:txid => txid, :raw => JSON.pretty_generate(decoded_tx))
-            db_transaction = Transaction.create(
-                :txid => txid,
-                :block_id => db_block.id
-            )
-
-            vins = result.fetch("vin")
-            total_input = 0
-
-            vins.each_with_index do |vin, i|
-              db_input = Input.create(
-                  :transaction_id => db_transaction.id
-              )
-
-              if vin['coinbase'] != nil
-                reward_block = true
-              else
-                db_input.vout = vin['vout']
-                previousOutputTxid = vin['txid']
-                output_tx = Transaction[:txid => previousOutputTxid]
-                db_input.outputTxid = previousOutputTxid
-                db_input.outputTransactionId = output_tx.id
-                output = Output[:transaction_id => output_tx.id, :n => db_input.vout]
-                total_input += output.value.round(6)
-                db_input.value = output.value.round(6)
-                db_input.save
-              end
-            end
-
-            vouts = result.fetch("vout")
-            total_output = 0
-            stake = false
-
-            # Loop through all outputs
-            vouts.each do |vout|
-              value = vout.fetch("value")
-              total_output += value.round(6)
-              n = vout.fetch("n")
-              script = vout.fetch("scriptPubKey")
-              asm = script.fetch("asm")
-              type = script.fetch("type")
-              if type == 'nonstandard'
-                if asm == '' || asm == 'OP_MICROPRIME'
-                  stake = true
+              raw_txs = silkroad.batch do
+                block['tx'].each do |tx|
+                  rpc 'getrawtransaction', tx
                 end
               end
-              address = ''
-              if type == "pubkey" || type == "pubkeyhash"
-                address = script.fetch("addresses")[0]
+
+              decoded_txs = silkroad.batch do
+                raw_txs.each do |raw_tx|
+                  rpc 'decoderawtransaction', raw_tx['result']
+                end
               end
 
-              # Save output to database
-              Output.create(
-                  :transaction_id => db_transaction.id,
-                  :n => n, :script => asm,
-                  :type => type,
-                  :address => address,
-                  :value => value
-              )
-            end
+              decoded_txs.each do |decoded_tx|
+                result = decoded_tx.fetch("result")
+                txid = result.fetch("txid")
+                reward_block = false
 
-            db_transaction.totalOutput = total_output.round(6)
-            if stake && vouts.length > 2
-              #set transaction type to PoS-Reward
-              if vouts[1].fetch("scriptPubKey").fetch("addresses")[0] == vouts[2].fetch("scriptPubKey").fetch("addresses")[0]
-                # Normal stake with no scrape address
-                stake_amount = total_output - total_input
-                db_transaction.fees = stake_amount.round(6)
-                db_transaction.type = 'PoS-Reward'
-              else # Assume scrape address
-                stake_amount = vouts[2].fetch("value")
-                db_transaction.fees = stake_amount.round(6)
-                db_transaction.type = 'PoS-Reward'
+                RawTransaction.create(:txid => txid, :raw => JSON.pretty_generate(decoded_tx))
+                db_transaction = Transaction.create(
+                    :txid => txid,
+                    :block_id => db_block.id
+                )
+
+                vins = result.fetch("vin")
+                total_input = 0
+
+                vins.each_with_index do |vin, i|
+                  db_input = Input.create(
+                      :transaction_id => db_transaction.id
+                  )
+
+                  if vin['coinbase'] != nil
+                    reward_block = true
+                  else
+                    db_input.vout = vin['vout']
+                    previousOutputTxid = vin['txid']
+                    output_tx = Transaction[:txid => previousOutputTxid]
+                    db_input.outputTxid = previousOutputTxid
+                    db_input.outputTransactionId = output_tx.id
+                    output = Output[:transaction_id => output_tx.id, :n => db_input.vout]
+                    total_input += output.value.round(6)
+                    db_input.value = output.value.round(6)
+                    db_input.save
+                  end
+                end
+
+                vouts = result.fetch("vout")
+                total_output = 0
+                stake = false
+
+                # Loop through all outputs
+                vouts.each do |vout|
+                  value = vout.fetch("value")
+                  total_output += value.round(6)
+                  n = vout.fetch("n")
+                  script = vout.fetch("scriptPubKey")
+                  asm = script.fetch("asm")
+                  type = script.fetch("type")
+                  if type == 'nonstandard'
+                    if asm == '' || asm == 'OP_MICROPRIME'
+                      stake = true
+                    end
+                  end
+                  address = ''
+                  if type == "pubkey" || type == "pubkeyhash"
+                    address = script.fetch("addresses")[0]
+                  end
+
+                  # Save output to database
+                  Output.create(
+                      :transaction_id => db_transaction.id,
+                      :n => n, :script => asm,
+                      :type => type,
+                      :address => address,
+                      :value => value
+                  )
+                end
+
+                db_transaction.totalOutput = total_output.round(6)
+                if stake && vouts.length > 2
+                  #set transaction type to PoS-Reward
+                  if vouts[1].fetch("scriptPubKey").fetch("addresses")[0] == vouts[2].fetch("scriptPubKey").fetch("addresses")[0]
+                    # Normal stake with no scrape address
+                    stake_amount = total_output - total_input
+                    db_transaction.fees = stake_amount.round(6)
+                    db_transaction.type = 'PoS-Reward'
+                    db_transaction.coinstake = true
+                  else # Assume scrape address
+                    stake_amount = vouts[2].fetch("value")
+                    db_transaction.fees = stake_amount.round(6)
+                    db_transaction.type = 'PoS-Reward'
+                    db_transaction.coinstake = true
+                  end
+                elsif stake && vouts.length == 2
+                  # Stake edge case where stake only has one transaction
+                  stake_amount = total_output - total_input
+                  db_transaction.fees = stake_amount.round(6)
+                  db_transaction.type = 'PoS-Reward'
+                  db_transaction.coinstake = true
+                elsif stake && reward_block
+                  # Coinbase of stake transaction
+                  db_transaction.fees = total_output - total_input
+                  db_transaction.type = 'PoS-Reward'
+                  db_transaction.coinbase = true
+                elsif !stake && reward_block
+                  # set transaction type to PoW-Reward
+                  db_transaction.fees = total_output.round(6)
+                  db_transaction.type ='PoW-Reward'
+                else # set transaction type to normal
+                  db_transaction.fees = (total_input - total_output).round(6)
+                  db_transaction.type = 'normal'
+                end
+                db_transaction.save
               end
-            elsif stake && vouts.length == 2
-              # Stake edge case where stake only has one transaction
-              stake_amount = total_output - total_input
-              db_transaction.fees = stake_amount.round(6)
-              db_transaction.type = 'PoS-Reward'
-            elsif !stake && reward_block
-              # set transaction type to PoW-Reward
-              db_transaction.fees = total_output.round(6)
-              db_transaction.type ='PoW-Reward'
-            else # set transaction type to normal
-              db_transaction.fees = (total_input - total_output).round(6)
-              db_transaction.type = 'normal'
-            end
-            db_transaction.save
-          end
 
-          puts 'Block saved: #' << db_block.height.to_s << '/' << block_count.to_s
-          # Increase highest block read
-          highest_block += 1
+              puts 'Block saved: #' << db_block.height.to_s << '/' << block_count.to_s
+              # Increase highest block read
+              highest_block += 1
+            end
           end
         end
 
