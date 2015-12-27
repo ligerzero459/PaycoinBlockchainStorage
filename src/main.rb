@@ -111,7 +111,18 @@ cli = Cliqr.interface do
 
         if prev_block == nil
           puts 'Previous block didn\'t match. Suspected orphan, redownloading'
-          Block[:height => @highest_block - 1].delete
+
+          # Find the previous block, find the transactions attached, delete the inputs and outputs attached to said
+          # transactions, delete the transactions then delete the block
+          prev_block = Block[:height => @highest_block - 1]
+          transactions = Transaction[:block_id => prev_block.id]
+          transactions.each do |tx|
+            Output[:transaction_id => tx.id].delete
+            Input[:transaction_id => tx.id].delete
+          end
+          transactions.delete
+          prev_block.delete
+
           @highest_block -= 1
         end
       end
