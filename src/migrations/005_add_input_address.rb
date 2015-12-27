@@ -3,6 +3,7 @@ Sequel.migration do
     puts '005_add_input_address UP'
     alter_table (:inputs) do
       add_column :address, String
+      add_index :address
     end
 
     require './src/models/input'
