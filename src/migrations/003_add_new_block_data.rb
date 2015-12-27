@@ -14,11 +14,15 @@ Sequel.migration do
 
     Block.set_dataset(:blocks)
 
-    Block[:height => 0].update(
-        :blockSize => 217,
-        :merkleRoot => '1552f748afb7ff4e04776652c5a17d4073e60b7004e9bca639a99edb82aeb1a0',
-        :difficulty => 0.00024414
-    )
+    genesis = Block[:height => 0]
+
+    if genesis != nil
+      genesis.update(
+          :blockSize => 217,
+          :merkleRoot => '1552f748afb7ff4e04776652c5a17d4073e60b7004e9bca639a99edb82aeb1a0',
+          :difficulty => 0.00024414
+      )
+    end
 
     raw_blocks = RawBlock.all
     raw_blocks.each do |raw_block|
