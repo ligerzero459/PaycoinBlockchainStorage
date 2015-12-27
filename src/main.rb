@@ -111,6 +111,7 @@ cli = Cliqr.interface do
         if prev_block == nil
           puts 'Previous block didn\'t match. Suspected orphan, redownloading'
           Block[:height => @highest_block - 1].delete
+          @highest_block -= 1
         end
       end
 
