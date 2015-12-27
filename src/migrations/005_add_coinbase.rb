@@ -1,6 +1,6 @@
 Sequel.migration do
   up do
-    puts '004_add_coinbase.rb UP'
+    puts '005_add_coinbase.rb UP'
     alter_table(:transactions) do
       add_column :coinbase, TrueClass, :default => false
       add_column :coinstake, TrueClass, :default => false
@@ -13,7 +13,7 @@ Sequel.migration do
   end
 
   down do
-    puts '004_add_coinbase.rb DOWN'
+    puts '005_add_coinbase.rb DOWN'
     alter_table(:transactions) do
       drop_column :coinbase
       drop_column :coinstake

@@ -11,7 +11,7 @@ require 'os'
 # Internal dependancies/models
 
 # Variable declarations
-db_version = 5
+db_version = 6
 
 silkroad = nil
 db = nil
@@ -138,85 +138,20 @@ cli = Cliqr.interface do
 
         db = Sequel.sqlite(@db_file)
 
-        db.create_table? :blocks do
-          primary_key :id
-          String :blockHash
-          Fixnum :blockSize
-          Fixnum :height, :unique=>true
-          String :merkleRoot
-          DateTime :blockTime
-          Float :difficulty
-          Float :mint
-          String :previousBlockHash
-          String :nextBlockHash
-          String :flags
-          index :blockHash
-          index :height
-        end
-
-        db.create_table? :raw_blocks do
-          primary_key :id
-          Fixnum :height
-          File :raw
-          index :height
-        end
-
-        db.create_table? :transactions do
-          primary_key :id
-          String :txid
-          Fixnum :block_id
-          String :type
-          Float :totalOutput
-          Float :fees
-          index :txid
-          index :block_id
-        end
-
-        db.create_table? :raw_transactions do
-          primary_key :id
-          String :txid
-          File :raw
-          index :txid
-        end
-
-        db.create_table? :inputs do
-          primary_key :id
-          Fixnum :transaction_id
-          Fixnum :vout
-          Fixnum :outputTransactionId
-          String :outputTxid
-          String :address
-          Float :value
-          index :transaction_id
-          index :outputTransactionId
-        end
-
-        db.create_table? :outputs do
-          primary_key :id
-          Fixnum :transaction_id
-          Fixnum :n
-          String :script
-          String :type
-          String :address
-          Float :value
-          index :address
-          index [:transaction_id, :value]
-        end
-
         db.create_table? :schema_info do
           Fixnum :version, :null => false, :default => db_version
         end
 
         saved_version = db[:schema_info].all
         if saved_version.count == 0
-          db[:schema_info].insert(:version => db_version)
+          puts "Database not fully created. Run migrations to create database. Refer to README.md for instructions."
+          exit
         elsif saved_version.count == 1
           if saved_version[0][:version] != db_version
             puts "Database version out of date. Run migrations to update database. Refer to README.md for instructions."
             exit
           end
         end
-
 
         # Object models for tables
         require './models/block'

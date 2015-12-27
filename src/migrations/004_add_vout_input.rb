@@ -7,7 +7,7 @@ require './src/models/raw_transaction'
 
 Sequel.migration do
   up do
-    puts '003_add_vout_input.rb UP'
+    puts '004_add_vout_input.rb UP'
     alter_table(:inputs) do
       add_column :vout, Fixnum
     end
@@ -41,7 +41,7 @@ Sequel.migration do
   end
 
   down do
-    puts '003_add_vout_input.rb DOWN'
+    puts '004_add_vout_input.rb DOWN'
     alter_table(:inputs) do
       drop_column :vout
     end

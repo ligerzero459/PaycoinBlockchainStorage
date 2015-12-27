@@ -2,7 +2,7 @@ require './src/models/block'
 
 Sequel.migration do
   up do
-    puts '001_add_next_block_hash.rb UP'
+    puts '002_add_next_block_hash.rb UP'
     alter_table(:blocks) do
       add_column :nextBlockHash, String
     end
@@ -16,7 +16,7 @@ Sequel.migration do
   end
 
   down do
-    puts '001_add_next_block_hash.rb DOWN'
+    puts '002_add_next_block_hash.rb DOWN'
     alter_table(:blocks) do
       drop_column :nextBlockHash
     end

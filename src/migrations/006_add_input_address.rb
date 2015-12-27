@@ -1,6 +1,6 @@
 Sequel.migration do
   up do
-    puts '005_add_input_address UP'
+    puts '006_add_input_address UP'
     alter_table (:inputs) do
       add_column :address, String
       add_index :address
@@ -21,7 +21,7 @@ Sequel.migration do
   end
 
   down do
-    puts '005_add_input_address DOWN'
+    puts '006_add_input_address DOWN'
     alter_table (:inputs) do
       drop_column :address
     end
