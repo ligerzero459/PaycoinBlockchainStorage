@@ -11,7 +11,7 @@ require 'os'
 # Internal dependancies/models
 
 # Variable declarations
-db_version = 5
+db_version = 6
 
 silkroad = nil
 db = nil
@@ -133,7 +133,7 @@ cli = Cliqr.interface do
         if client_info.fetch('testnet')
           @db_file = '../XPYBlockchainTestnet.sqlite'
         else
-          @db_file = '../XPYBlockchain2.sqlite'
+          @db_file = '../XPYBlockchain.sqlite'
         end
 
         db = Sequel.sqlite(@db_file)
