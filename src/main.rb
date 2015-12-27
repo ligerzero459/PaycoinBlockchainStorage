@@ -11,7 +11,7 @@ require 'os'
 # Internal dependancies/models
 
 # Variable declarations
-db_version = 4
+db_version = 5
 
 silkroad = nil
 db = nil
@@ -185,6 +185,7 @@ cli = Cliqr.interface do
           Fixnum :vout
           Fixnum :outputTransactionId
           String :outputTxid
+          String :address
           Float :value
           index :transaction_id
           index :outputTransactionId
@@ -327,6 +328,7 @@ cli = Cliqr.interface do
               output = Output[:transaction_id => output_tx.id, :n => db_input.vout]
               total_input += output.value.round(6)
               db_input.value = output.value.round(6)
+              db_input.address = output.address
               db_input.save
             end
           end
