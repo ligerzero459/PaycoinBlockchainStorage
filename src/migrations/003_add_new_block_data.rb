@@ -5,7 +5,7 @@ require './src/models/raw_block'
 
 Sequel.migration do
   up do
-    puts '002_add_new_block_data.rb UP'
+    puts '003_add_new_block_data.rb UP'
     alter_table(:blocks) do
       add_column :blockSize, Fixnum
       add_column :merkleRoot, String
@@ -34,7 +34,7 @@ Sequel.migration do
   end
 
   down do
-    puts '002_add_new_block_data.rb DOWN'
+    puts '003_add_new_block_data.rb DOWN'
     alter_table(:blocks) do
       drop_column :blockSize
       drop_column :merkleRoot
