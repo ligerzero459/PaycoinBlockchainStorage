@@ -115,10 +115,10 @@ cli = Cliqr.interface do
           # Find the previous block, find the transactions attached, delete the inputs and outputs attached to said
           # transactions, delete the transactions then delete the block
           prev_block = Block[:height => @highest_block - 1]
-          transactions = Transaction[:block_id => prev_block.id]
+          transactions = Transaction.where(:block_id => prev_block.id)
           transactions.each do |tx|
-            Output[:transaction_id => tx.id].delete
-            Input[:transaction_id => tx.id].delete
+            Output.where(:transaction_id => tx.id).delete
+            Input.where(:transaction_id => tx.id).delete
           end
           transactions.delete
           prev_block.delete
