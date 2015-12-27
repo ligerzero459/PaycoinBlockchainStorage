@@ -16,7 +16,6 @@ db_version = 4
 silkroad = nil
 db = nil
 @highest_block = 1
-hash_array = []
 
 cli = Cliqr.interface do
   name 'pbs'
@@ -102,6 +101,17 @@ cli = Cliqr.interface do
         paycoin_uri = URI::HTTP.build(["#@user:#@pass", "#@host", Integer(@port), nil, nil, nil])
         silkroad = Silkroad::Client.new paycoin_uri, {}
         silkroad
+      end
+
+      def check_prev_block(silkroad)
+        hash = silkroad.rpc 'getblockhash', @highest_block
+        block = silkroad.rpc 'getblock', hash
+
+        prev_block = Block[:blockHash => block.fetch("previousblockhash")]
+        if prev_block == nil
+          puts 'Previous block didn\'t match. Suspected orphan, redownloading'
+          Block[:height => @highest_block - 1].delete
+        end
       end
 
       def start_up_sequel(silkroad, db_version)
@@ -236,7 +246,7 @@ cli = Cliqr.interface do
         db
       end
 
-      def parse_block(block_num)
+      def parse_block(block_num, silkroad)
         hash = silkroad.rpc 'getblockhash', block_num
         block = silkroad.rpc 'getblock', hash
 
@@ -382,10 +392,6 @@ cli = Cliqr.interface do
         @highest_block += 1
       end
 
-      def check_prev_block()
-
-      end
-
       silkroad = start_up_rpc
       db = start_up_sequel(silkroad, db_version)
 
@@ -399,10 +405,11 @@ cli = Cliqr.interface do
           puts 'Total block count: ' << block_count.to_s
 
           sleep(3)
+          check_prev_block(silkroad)
 
           (@highest_block..block_count).each do |block_num|
             db.transaction do
-              parse_block(block_num)
+              parse_block(block_num, silkroad)
             end
           end
         end
