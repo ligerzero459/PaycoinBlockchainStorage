@@ -108,6 +108,7 @@ cli = Cliqr.interface do
         block = silkroad.rpc 'getblock', hash
 
         prev_block = Block[:blockHash => block.fetch("previousblockhash")]
+
         if prev_block == nil
           puts 'Previous block didn\'t match. Suspected orphan, redownloading'
           Block[:height => @highest_block - 1].delete
@@ -247,7 +248,7 @@ cli = Cliqr.interface do
         db
       end
 
-      def parse_block(block_num, silkroad)
+      def parse_block(block_num, silkroad, block_count)
         hash = silkroad.rpc 'getblockhash', block_num
         block = silkroad.rpc 'getblock', hash
 
@@ -410,7 +411,7 @@ cli = Cliqr.interface do
 
           (@highest_block..block_count).each do |block_num|
             db.transaction do
-              parse_block(block_num, silkroad)
+              parse_block(block_num, silkroad, block_count)
             end
           end
         end
