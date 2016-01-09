@@ -131,9 +131,9 @@ cli = Cliqr.interface do
         @db_file = ''
         client_info = silkroad.rpc 'getinfo'
         if client_info.fetch('testnet')
-          @db_file = '../XPYBlockchainTestnet.sqlite'
+          @db_file = File.expand_path('../../XPYBlockchainTestnet.sqlite', __FILE__)
         else
-          @db_file = '../XPYBlockchain.sqlite'
+          @db_file = File.expand_path('../../XPYBlockchain.sqlite', __FILE__)
         end
 
         db = Sequel.sqlite(@db_file)
@@ -154,12 +154,14 @@ cli = Cliqr.interface do
         end
 
         # Object models for tables
-        require './models/block'
-        require './models/raw_block'
-        require './models/transaction'
-        require './models/raw_transaction'
-        require './models/input'
-        require './models/output'
+        require_relative  './models/block'
+        require_relative  './models/raw_block'
+        require_relative  './models/transaction'
+        require_relative  './models/raw_transaction'
+        require_relative  './models/input'
+        require_relative  './models/output'
+
+        puts 'Models loaded'
 
         # Put genesis block into db if not exists
         genesis_block = db[:blocks]
@@ -345,9 +347,12 @@ cli = Cliqr.interface do
       silkroad = start_up_rpc
       db = start_up_sequel(silkroad, db_version)
 
+      puts "DB started"
+
       @highest_block = db[:blocks].count != 0 ? (db[:blocks].max(:height)) + 1 : 1
 
       while true
+        puts "Getting block count..."
         block_count = silkroad.rpc 'getblockcount'
         if block_count < @highest_block
           puts 'No new blocks found.'
