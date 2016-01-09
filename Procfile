@@ -1,0 +1,1 @@
+worker: ruby src/main.rb parse
