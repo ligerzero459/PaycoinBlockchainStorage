@@ -1,0 +1,12 @@
+# Example configuration file
+
+# Change the default database adapter at the top
+# Available options are sqlite, postgres and mysql
+
+
+# You can set RPC settings here as well
+[RPC]
+username = paycoinrpc
+password = password
+host = 127.0.0.1
+port = 9001
