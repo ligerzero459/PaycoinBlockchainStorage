@@ -1,12 +1,9 @@
 GEM
   remote: https://rubygems.org/
   specs:
-    cliqr (2.2.0)
-      sawaal (~> 1.0.0)
     json (1.8.3)
     os (0.9.6)
     parseconfig (1.0.6)
-    sawaal (1.0.2)
     sequel (4.30.0)
     silkroad (0.1.0)
     sqlite3 (1.3.11-x64-mingw32)
@@ -15,7 +12,6 @@ PLATFORMS
   x64-mingw32
 
 DEPENDENCIES
-  cliqr
   json
   os
   parseconfig
