@@ -57,8 +57,12 @@ class OptParse
 
       end
 
-      opts.on("-l", "--loadconfig", "Load seperate config file") do |l|
-        
+      opts.on("-l", "--loadconfig FILEPATH", "Load seperate config file") do |l|
+        conf_file = File.expand_path("../../" << l, __FILE__)
+        load_config = ParseConfig.new(conf_file)
+
+        p load_config
+        exit
       end
 
       opts.on("-ho", "--host HOST", "Specify RPC host") do |host|
