@@ -22,7 +22,6 @@ class OptParse
   def self.parse(args)
     # Set default values for all options
     options = OpenStruct.new
-    options.loadconfig = ""
     options.user = "paycoinrpc"
     options.pass = "password"
     options.port = Integer('9001')
@@ -85,23 +84,29 @@ class OptParse
           options.postgres.host = load_config['postgres']['host']
           options.postgres.database = load_config['postgres']['database']
 
-          if (options.postgres.username == nil ||
+          if options.postgres.username == nil ||
               options.postgres.password == nil ||
               options.postgres.host == nil ||
-              options.postgres.database == nil)
+              options.postgres.database == nil
             puts "All required database connections settings not available. Please ensure username, password, host" +
               "\nand database name are in config file."
           end
-        else options.adapter == 'mysql'
+        elsif options.adapter == 'mysql'
           puts 'MySQL adapter selected'
           if load_config['mysql'] == nil
             puts 'No MySQL config detected. Exiting...'
             exit
           end
           options.mysql = OpenStruct.new
+
+          options.mysql.username = load_config['mysql']['username']
+          options.mysql.password = load_config['mysql']['password']
+          options.mysql.host = load_config['mysql']['host']
+          options.mysql.database = load_config['mysql']['database']
+        else
+          puts 'SQLite adapter selected'
         end
 
-        exit
       end
 
       opts.on("-ho", "--host HOST", "Specify RPC host") do |host|
@@ -164,16 +169,25 @@ def check_prev_block(silkroad)
   end
 end
 
-def start_up_sequel(silkroad, db_version)
+def start_up_sequel(silkroad, db_version, options)
   @db_file = ''
   client_info = silkroad.rpc 'getinfo'
-  if client_info.fetch('testnet')
-    @db_file = File.expand_path('../../XPYBlockchainTestnet.sqlite', __FILE__)
-  else
-    @db_file = File.expand_path('../../XPYBlockchain.sqlite', __FILE__)
-  end
+  testnet = client_info.fetch('testnet')
+  db = nil
 
-  db = Sequel.sqlite(@db_file)
+  if options.adapter == 'sqlite'
+    if testnet
+      @db_file = File.expand_path('../../XPYBlockchainTestnet.sqlite', __FILE__)
+    else
+      @db_file = File.expand_path('../../XPYBlockchain.sqlite', __FILE__)
+    end
+
+    db = Sequel.sqlite(@db_file)
+  elsif options.adapter == 'postgres'
+
+  elsif options.adapter == 'mysql'
+
+  end
 
   db.create_table? :schema_info do
     Fixnum :version, :null => false, :default => db_version
@@ -384,7 +398,7 @@ end
 options = OptParse.parse(ARGV)
 
 silkroad = start_up_rpc(options)
-db = start_up_sequel(silkroad, db_version)
+db = start_up_sequel(silkroad, db_version, options)
 
 puts "DB started"
 
