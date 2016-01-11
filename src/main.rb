@@ -184,9 +184,39 @@ def start_up_sequel(silkroad, db_version, options)
 
     db = Sequel.sqlite(@db_file)
   elsif options.adapter == 'postgres'
-
+    if testnet
+      db = Sequel.postgres(
+          :database=>options.postgres.database + "Testnet",
+          :host=>options.postgres.host,
+          :user=>options.postgres.username,
+          :password=>options.postgres.password
+      )
+    else
+      db = Sequel.postgres(
+          :database=>options.postgres.database,
+          :host=>options.postgres.host,
+          :user=>options.postgres.username,
+          :password=>options.postgres.password
+      )
+    end
   elsif options.adapter == 'mysql'
-
+    if testnet
+      db = Sequel.connect(
+          :adapter=>'mysql2',
+          :database=>options.mysql.database + "Testnet",
+          :host=>options.mysql.host,
+          :user=>options.mysql.username,
+          :password=>options.mysql.password
+      )
+    else
+      db = Sequel.connect(
+          :adapter=>'mysql2',
+          :database=>options.mysql.database,
+          :host=>options.mysql.host,
+          :user=>options.mysql.username,
+          :password=>options.mysql.password
+      )
+    end
   end
 
   db.create_table? :schema_info do
