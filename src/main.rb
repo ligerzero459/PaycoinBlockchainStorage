@@ -27,6 +27,7 @@ class OptParse
     options.pass = "password"
     options.port = Integer('9001')
     options.host = "127.0.0.1"
+    options.adapter = "sqlite"
 
     opt_parser = OptionParser.new do |opts|
       opts.banner = "Usage: main.rb [options]"
@@ -57,11 +58,49 @@ class OptParse
 
       end
 
+      # Separate config file
+      # Example config file found in parser.conf.example
       opts.on("-l", "--loadconfig FILEPATH", "Load seperate config file") do |l|
         conf_file = File.expand_path("../../" << l, __FILE__)
         load_config = ParseConfig.new(conf_file)
 
-        p load_config
+        # Check for different database adapter
+        # Default is sqlite
+        if load_config['adapter'] != nil
+          options.adapter = load_config['adapter'].downcase
+        end
+
+        # If adapter was changed from sqlite, look for database connection info
+        if options.adapter == 'postgres'
+          puts 'PostgreSQL adapter selected'
+          if load_config['postgres'] == nil
+            puts 'No PostgreSQL config detected. Exiting...'
+            exit
+          end
+          options.postgres = OpenStruct.new
+
+          # Set all the required info for connecting to database
+          options.postgres.username = load_config['postgres']['username']
+          options.postgres.password = load_config['postgres']['password']
+          options.postgres.host = load_config['postgres']['host']
+          options.postgres.database = load_config['postgres']['database']
+
+          if (options.postgres.username == nil ||
+              options.postgres.password == nil ||
+              options.postgres.host == nil ||
+              options.postgres.database == nil)
+            puts "All required database connections settings not available. Please ensure username, password, host" +
+              "\nand database name are in config file."
+          end
+        else options.adapter == 'mysql'
+          puts 'MySQL adapter selected'
+          if load_config['mysql'] == nil
+            puts 'No MySQL config detected. Exiting...'
+            exit
+          end
+          options.mysql = OpenStruct.new
+        end
+
         exit
       end
 
