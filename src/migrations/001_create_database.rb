@@ -16,7 +16,7 @@ Sequel.migration do
     create_table? :raw_blocks do
       primary_key :id
       Fixnum :height
-      File :raw
+      File :raw, :size=>:long
       index :height
     end
 
@@ -34,7 +34,7 @@ Sequel.migration do
     create_table? :raw_transactions do
       primary_key :id
       String :txid
-      File :raw
+      File :raw, :size=>:long
       index :txid
     end
 
