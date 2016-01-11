@@ -8,8 +8,8 @@ Sequel.migration do
 
     require './src/models/transaction'
 
-    Transaction.where(:type => 'PoS-Reward', :totalOutput => 0.0, :fees => 0.0).update(:coinbase => true);
-    Transaction.where(:type => 'PoS-Reward').where('totalOutput > 0.0').update(:coinstake => true);
+    Transaction.where(:type => 'PoS-Reward', :totalOutput => 0.0, :fees => 0.0).update(:coinbase => true)
+    Transaction.where(:type => 'PoS-Reward').where{totalOutput > 0.0}.update(:coinstake => true)
   end
 
   down do

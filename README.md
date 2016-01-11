@@ -30,7 +30,7 @@ SQLite will automatically create a new file if one doesn't exist yet. For Postgr
 
 and for MySQL, run
 
-`sequel -m src/migrations mysql://user:password@host/database_name`
+`sequel -m src/migrations mysql2://user:password@host/database_name`
 
 You will need to install PostgreSQL/MySQL, create the user, database and assign the correct privileges before running the migration.
 

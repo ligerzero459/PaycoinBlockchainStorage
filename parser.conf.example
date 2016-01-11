@@ -1,0 +1,27 @@
+# Example configuration file
+
+# Change the default database adapter at the top
+# Adapter will default to sqlite if nothing is specified
+# Available options are sqlite, postgres and mysql
+adapter = postgres
+
+# You can set RPC settings here as well
+[RPC]
+username = paycoinrpc
+password = password
+host = 127.0.0.1
+port = 9001
+
+# PostgreSQL and MySQL require additional settings
+# Set them under a tag containing their name
+[postgres]
+username = paycoindb
+password = paycoin
+host = localhost
+database = XPYBlockchain
+
+[mysql]
+username = paycoindb
+password = paycoin
+host = localhost
+database = XPYBlockchain
