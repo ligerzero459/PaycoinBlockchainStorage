@@ -3,25 +3,32 @@
 # Change the default database adapter at the top
 # Adapter will default to sqlite if nothing is specified
 # Available options are sqlite, postgres and mysql
-adapter = postgres
+adapter = sqlite
 
 # You can set RPC settings here as well
-[RPC]
-username = paycoinrpc
-password = password
-host = 127.0.0.1
-port = 9001
+#[RPC]
+#username = paycoinrpc
+#password = password
+#host = 127.0.0.1
+#port = 9001
 
 # PostgreSQL and MySQL require additional settings
 # Set them under a tag containing their name
-[postgres]
-username = paycoindb
-password = paycoin
-host = localhost
-database = XPYBlockchain
+#[postgres]
+#username = paycoindb
+#password = paycoin
+#host = localhost
+#database = XPYBlockchain
 
-[mysql]
-username = paycoindb
-password = paycoin
-host = localhost
-database = XPYBlockchain
+#[mysql]
+#username = paycoindb
+#password = paycoin
+#host = localhost
+#database = XPYBlockchain
+
+# SQLite will allow you to specify an exact path to save your blockchain file
+# Make sure to include the database name in the path
+
+#[sqlite]
+#path = '../XPYBlockchain.sqlite'
+#pathtestnet = '../XPYBlockchainTestnet.sqlite'
