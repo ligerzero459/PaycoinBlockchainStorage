@@ -27,6 +27,8 @@ class OptParse
     options.port = Integer('9001')
     options.host = "127.0.0.1"
     options.adapter = "sqlite"
+    options.pathTestnet = "../../XPYBlockchainTestnet.sqlite"
+    options.path = "../../XPYBlockchain.sqlite"
 
     opt_parser = OptionParser.new do |opts|
       opts.banner = "Usage: main.rb [options]"
@@ -69,6 +71,14 @@ class OptParse
           options.adapter = load_config['adapter'].downcase
         end
 
+        if load_config['RPC'] != nil
+          options.user = load_config['RPC']['username'] != nil ? load_config['RPC']['username'] : options.username
+          options.pass = load_config['RPC']['password'] != nil ? load_config['RPC']['password'] : options.password
+          options.host = load_config['RPC']['host'] != nil ? load_config['RPC']['host'] : options.host
+          options.port = load_config['RPC']['port'] != nil ? load_config['RPC']['port'] : options.port
+          puts options
+        end
+
         # If adapter was changed from sqlite, look for database connection info
         if options.adapter == 'postgres'
           puts 'PostgreSQL adapter selected'
@@ -103,8 +113,18 @@ class OptParse
           options.mysql.password = load_config['mysql']['password']
           options.mysql.host = load_config['mysql']['host']
           options.mysql.database = load_config['mysql']['database']
-        else
+        elsif options.adapter == 'sqlite'
           puts 'SQLite adapter selected'
+
+          # New paths do not need to be specified
+          # Defaults will be used if nothing is specified
+          if load_config['sqlite'] != nil
+            options.path = load_config['sqlite']['path'] != nil ? load_config['sqlite']['path'] : options.path
+            options.pathTestnet = load_config['sqlite']['pathtestnet'] != nil ? load_config['sqlite']['pathtestnet'] : options.pathTestnet
+          end
+        else
+          puts 'Unsupported adapter detected. Quitting...'
+          exit
         end
 
       end
@@ -177,9 +197,9 @@ def start_up_sequel(silkroad, db_version, options)
 
   if options.adapter == 'sqlite'
     if testnet
-      @db_file = File.expand_path('../../XPYBlockchainTestnet.sqlite', __FILE__)
+      @db_file = File.expand_path(options.pathTestnet, __FILE__)
     else
-      @db_file = File.expand_path('../../XPYBlockchain.sqlite', __FILE__)
+      @db_file = File.expand_path(options.path, __FILE__)
     end
 
     db = Sequel.sqlite(@db_file)
