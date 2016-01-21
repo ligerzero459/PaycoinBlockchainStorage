@@ -12,7 +12,7 @@ require 'os'
 # Internal dependancies/models
 
 # Variable declarations
-db_version = 6
+db_version = 7
 
 silkroad = nil
 db = nil
@@ -261,6 +261,7 @@ def start_up_sequel(silkroad, db_version, options)
   require_relative  './models/raw_transaction'
   require_relative  './models/input'
   require_relative  './models/output'
+  require_relative  './models/address'
 
   puts 'Models loaded'
 
@@ -302,11 +303,13 @@ def parse_block(block_num, silkroad, block_count)
   hash = silkroad.rpc 'getblockhash', block_num
   block = silkroad.rpc 'getblock', hash
 
+  # Parse raw block into JSON
   db_raw_block = RawBlock.new
   db_raw_block.raw = JSON.pretty_generate(block)
 
   db_block = Block.new
 
+  # Put block data into new Block model
   height = block.fetch("height").to_i
   db_block.blockHash = hash
   db_block.height = height
@@ -324,6 +327,7 @@ def parse_block(block_num, silkroad, block_count)
   # Update previous block's 'nextBlockHash'
   Block[:blockHash => db_block.previousBlockHash].update(:nextBlockHash => db_block.blockHash)
 
+  # Grab all block transactions and decode them
   raw_txs = silkroad.batch do
     block['tx'].each do |tx|
       rpc 'getrawtransaction', tx
@@ -336,6 +340,7 @@ def parse_block(block_num, silkroad, block_count)
     end
   end
 
+  # Loop through all transactions and process inputs and outputs
   decoded_txs.each do |decoded_tx|
     result = decoded_tx.fetch("result")
     txid = result.fetch("txid")
@@ -350,6 +355,7 @@ def parse_block(block_num, silkroad, block_count)
     vins = result.fetch("vin")
     total_input = 0
 
+    # Process all inputs
     vins.each_with_index do |vin, i|
       db_input = Input.create(
           :transaction_id => db_transaction.id
@@ -367,6 +373,18 @@ def parse_block(block_num, silkroad, block_count)
         total_input += output.value.round(6)
         db_input.value = output.value.round(6)
         db_input.address = output.address
+
+        address = Address[:address => db_input.address]
+        if address == nil
+          address = Address.create(
+              :address=>db_input.address,
+              :balance=>db_input.value
+          )
+        else
+          address.update(:balance => address.balance - db_input.value)
+        end
+
+        address.save
         db_input.save
       end
     end
@@ -393,6 +411,16 @@ def parse_block(block_num, silkroad, block_count)
         address = script.fetch("addresses")[0]
       end
 
+      address_out = Address[:address => address]
+      if address_out == nil
+        address_out = Address.create(
+            :address=>address,
+            :balance=>value
+        )
+      else
+        address_out.update(:balance => address_out.balance + value)
+      end
+
       # Save output to database
       Output.create(
           :transaction_id => db_transaction.id,
@@ -401,6 +429,7 @@ def parse_block(block_num, silkroad, block_count)
           :address => address,
           :value => value
       )
+      address_out.save
     end
 
     db_transaction.totalOutput = total_output.round(6)
