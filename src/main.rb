@@ -12,7 +12,7 @@ require 'os'
 # Internal dependancies/models
 
 # Variable declarations
-db_version = 7
+db_version = 8
 
 silkroad = nil
 db = nil
@@ -262,13 +262,14 @@ def start_up_sequel(silkroad, db_version, options)
   require_relative  './models/input'
   require_relative  './models/output'
   require_relative  './models/address'
+  require_relative  './models/outstanding_coin'
 
   puts 'Models loaded'
 
   # Put genesis block into db if not exists
   genesis_block = db[:blocks]
   if genesis_block.count == 0
-    if client_info.fetch("testnet")
+    if testnet
       Block.create(
           :blockHash => '0000000f6bb18c77c5b39a25fa03e4c90bffa5cc10d6d9758a1bed5adcee9404',
           :blockSize => 217,
@@ -485,6 +486,8 @@ puts "DB started"
 
 while true
   puts "Getting block count..."
+  client_info = silkroad.rpc 'getinfo'
+  OutstandingCoin.create(:coinSupply=>client_info.fetch('moneysupply').round(8))
   block_count = silkroad.rpc 'getblockcount'
   if block_count < @highest_block
     puts 'No new blocks found.'
