@@ -278,7 +278,7 @@ def start_up_sequel(silkroad, db_version, options)
           :blockTime => '2014-11-29 00:00:10 UTC',
           :difficulty => 0.06249911,
           :mint => 0.0,
-          :previousBlockHash => '',
+          :previousBlockHash => nil,
           :flags => 'proof-of-work stake-modifier'
       )
     else
@@ -290,7 +290,7 @@ def start_up_sequel(silkroad, db_version, options)
           :blockTime => '2014-11-29 00:00:10 UTC',
           :difficulty => 0.00024414,
           :mint => 0.0,
-          :previousBlockHash => '',
+          :previousBlockHash => nil,
           :flags => 'proof-of-work stake-modifier'
       )
     end
