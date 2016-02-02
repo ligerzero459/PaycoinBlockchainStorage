@@ -25,6 +25,9 @@ Sequel.migration do
 
     addresses = Address.all
     addresses.each do |address|
+      if address.address == ''
+        next
+      end
       transactions = []
       balance = 0.0
 
