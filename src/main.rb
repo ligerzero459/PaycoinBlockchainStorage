@@ -12,7 +12,7 @@ require 'os'
 # Internal dependancies/models
 
 # Variable declarations
-db_version = 8
+db_version = 9
 
 silkroad = nil
 db = nil
@@ -263,6 +263,7 @@ def start_up_sequel(silkroad, db_version, options)
   require_relative  './models/output'
   require_relative  './models/address'
   require_relative  './models/outstanding_coin'
+  require_relative  './models/ledger'
 
   puts 'Models loaded'
 
@@ -382,8 +383,19 @@ def parse_block(block_num, silkroad, block_count)
               :balance=>db_input.value
           )
         else
-          address.update(:balance => address.balance - db_input.value)
+          address.update(:balance => address.balance.round(6) - db_input.value.round(6))
         end
+
+        # Create ledger input entry
+        Ledger.create(
+            :transaction_id => db_transaction.id,
+            :txid => txid,
+            :address => address.address,
+            :value => db_input.value.round(6),
+            :type => 'input',
+            :n => db_input.vout,
+            :balance => address.balance
+        )
 
         address.save
         db_input.save
@@ -408,7 +420,7 @@ def parse_block(block_num, silkroad, block_count)
         end
       end
       address = ''
-      if type == "pubkey" || type == "pubkeyhash"
+      if type == "pubkey" || type == "pubkeyhash" || type == "scripthash"
         address = script.fetch("addresses")[0]
       end
 
@@ -419,7 +431,7 @@ def parse_block(block_num, silkroad, block_count)
             :balance=>value
         )
       else
-        address_out.update(:balance => address_out.balance + value)
+        address_out.update(:balance => address_out.balance.round(6) + value.round(6))
       end
 
       # Save output to database
@@ -429,6 +441,17 @@ def parse_block(block_num, silkroad, block_count)
           :type => type,
           :address => address,
           :value => value
+      )
+
+      # Save output ledger entry
+      Ledger.create(
+          :transaction_id => db_transaction.id,
+          :txid => txid,
+          :address => address,
+          :value => value.round(6),
+          :type => 'output',
+          :n => n,
+          :balance => address_out.balance
       )
       address_out.save
     end
