@@ -444,15 +444,17 @@ def parse_block(block_num, silkroad, block_count)
       )
 
       # Save output ledger entry
-      Ledger.create(
-          :transaction_id => db_transaction.id,
-          :txid => txid,
-          :address => address,
-          :value => value.round(8),
-          :type => 'output',
-          :n => n,
-          :balance => address_out.balance
-      )
+      if type != 'nonstandard'
+        Ledger.create(
+            :transaction_id => db_transaction.id,
+            :txid => txid,
+            :address => address,
+            :value => value.round(8),
+            :type => 'output',
+            :n => n,
+            :balance => address_out.balance
+        )
+      end
       address_out.save
     end
 
