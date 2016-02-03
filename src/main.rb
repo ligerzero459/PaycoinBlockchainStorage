@@ -372,18 +372,18 @@ def parse_block(block_num, silkroad, block_count)
         db_input.outputTxid = previousOutputTxid
         db_input.outputTransactionId = output_tx.id
         output = Output[:transaction_id => output_tx.id, :n => db_input.vout]
-        total_input += output.value.round(6)
-        db_input.value = output.value.round(6)
+        total_input += output.value.round(8)
+        db_input.value = output.value.round(8)
         db_input.address = output.address
 
         address = Address[:address => db_input.address]
         if address == nil
           address = Address.create(
               :address=>db_input.address,
-              :balance=>db_input.value
+              :balance=>db_input.value.rount(8)
           )
         else
-          address.update(:balance => address.balance.round(6) - db_input.value.round(6))
+          address.update(:balance => address.balance.round(8) - db_input.value.round(8))
         end
 
         # Create ledger input entry
@@ -391,7 +391,7 @@ def parse_block(block_num, silkroad, block_count)
             :transaction_id => db_transaction.id,
             :txid => txid,
             :address => address.address,
-            :value => db_input.value.round(6),
+            :value => db_input.value.round(8),
             :type => 'input',
             :n => db_input.vout,
             :balance => address.balance
@@ -409,7 +409,7 @@ def parse_block(block_num, silkroad, block_count)
     # Loop through all outputs
     vouts.each do |vout|
       value = vout.fetch("value")
-      total_output += value.round(6)
+      total_output += value.round(8)
       n = vout.fetch("n")
       script = vout.fetch("scriptPubKey")
       asm = script.fetch("asm")
@@ -428,10 +428,10 @@ def parse_block(block_num, silkroad, block_count)
       if address_out == nil
         address_out = Address.create(
             :address=>address,
-            :balance=>value
+            :balance=>value.round(8)
         )
       else
-        address_out.update(:balance => address_out.balance.round(6) + value.round(6))
+        address_out.update(:balance => address_out.balance.round(8) + value.round(8))
       end
 
       # Save output to database
@@ -448,7 +448,7 @@ def parse_block(block_num, silkroad, block_count)
           :transaction_id => db_transaction.id,
           :txid => txid,
           :address => address,
-          :value => value.round(6),
+          :value => value.round(8),
           :type => 'output',
           :n => n,
           :balance => address_out.balance
@@ -456,25 +456,25 @@ def parse_block(block_num, silkroad, block_count)
       address_out.save
     end
 
-    db_transaction.totalOutput = total_output.round(6)
+    db_transaction.totalOutput = total_output.round(8)
     if stake && vouts.length > 2
       #set transaction type to PoS-Reward
       if vouts[1].fetch("scriptPubKey").fetch("addresses")[0] == vouts[2].fetch("scriptPubKey").fetch("addresses")[0]
         # Normal stake with no scrape address
         stake_amount = total_output - total_input
-        db_transaction.fees = stake_amount.round(6)
+        db_transaction.fees = stake_amount.round(8)
         db_transaction.type = 'PoS-Reward'
         db_transaction.coinstake = true
       else # Assume scrape address
         stake_amount = vouts[2].fetch("value")
-        db_transaction.fees = stake_amount.round(6)
+        db_transaction.fees = stake_amount.round(8)
         db_transaction.type = 'PoS-Reward'
         db_transaction.coinstake = true
       end
     elsif stake && vouts.length == 2
       # Stake edge case where stake only has one transaction
       stake_amount = total_output - total_input
-      db_transaction.fees = stake_amount.round(6)
+      db_transaction.fees = stake_amount.round(8)
       db_transaction.type = 'PoS-Reward'
       db_transaction.coinstake = true
     elsif stake && reward_block
@@ -484,10 +484,10 @@ def parse_block(block_num, silkroad, block_count)
       db_transaction.coinbase = true
     elsif !stake && reward_block
       # set transaction type to PoW-Reward
-      db_transaction.fees = total_output.round(6)
+      db_transaction.fees = total_output.round(8)
       db_transaction.type ='PoW-Reward'
     else # set transaction type to normal
-      db_transaction.fees = (total_input - total_output).round(6)
+      db_transaction.fees = (total_input - total_output).round(8)
       db_transaction.type = 'normal'
     end
     db_transaction.save
