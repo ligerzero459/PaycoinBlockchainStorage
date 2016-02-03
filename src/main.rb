@@ -391,7 +391,7 @@ def parse_block(block_num, silkroad, block_count)
             :transaction_id => db_transaction.id,
             :txid => txid,
             :address => address.address,
-            :value => db_input.value.round(8),
+            :value => -db_input.value.round(8),
             :type => 'input',
             :n => db_input.vout,
             :balance => address.balance
