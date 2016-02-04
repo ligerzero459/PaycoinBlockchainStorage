@@ -380,7 +380,7 @@ def parse_block(block_num, silkroad, block_count)
         if address == nil
           address = Address.create(
               :address=>db_input.address,
-              :balance=>db_input.value.rount(8)
+              :balance=>db_input.value.round(8)
           )
         else
           address.update(:balance => address.balance.round(8) - db_input.value.round(8))
