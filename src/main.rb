@@ -186,6 +186,7 @@ def check_prev_block(silkroad)
     prev_block.delete
 
     @highest_block -= 1
+    check_prev_block(silkroad)
   end
 end
 
