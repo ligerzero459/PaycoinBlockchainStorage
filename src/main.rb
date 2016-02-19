@@ -174,16 +174,21 @@ def check_prev_block(silkroad)
   if prev_block == nil
     puts 'Previous block didn\'t match. Suspected orphan, redownloading'
 
-    # Find the previous block, find the transactions attached, delete the inputs and outputs attached to said
-    # transactions, delete the transactions then delete the block
-    prev_block = Block[:height => @highest_block - 1]
-    transactions = Transaction.where(:block_id => prev_block.id)
-    transactions.each do |tx|
-      Output.where(:transaction_id => tx.id).delete
-      Input.where(:transaction_id => tx.id).delete
+    # Find the previous block, find the transactions attached, delete the inputs, outputs and ledger entries attached
+    # to said transactions, delete the transactions then delete the block
+    db.transaction do
+      prev_block = Block[:height => @highest_block - 1]
+      transactions = Transaction.where(:block_id => prev_block.id)
+      transactions.each do |tx|
+        Output.where(:transaction_id => tx.id).delete
+        Input.where(:transaction_id => tx.id).delete
+        Ledger.where(:txid => tx.txid).delete
+        RawTransaction.where(:txid => tx.txid).delete
+      end
+      transactions.delete
+      RawBlock.where(:height => prev_block.height).delete
+      prev_block.delete
     end
-    transactions.delete
-    prev_block.delete
 
     @highest_block -= 1
     check_prev_block(silkroad)
