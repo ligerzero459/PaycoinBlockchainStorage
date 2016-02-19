@@ -191,7 +191,7 @@ def check_prev_block(silkroad, db)
     end
 
     @highest_block -= 1
-    check_prev_block(silkroad)
+    check_prev_block(silkroad, db)
   end
 end
 
