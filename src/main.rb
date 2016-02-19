@@ -165,7 +165,7 @@ def start_up_rpc(options)
   silkroad
 end
 
-def check_prev_block(silkroad)
+def check_prev_block(silkroad, db)
   hash = silkroad.rpc 'getblockhash', @highest_block
   block = silkroad.rpc 'getblock', hash
 
@@ -530,7 +530,7 @@ while true
     puts 'Total block count: ' << block_count.to_s
 
     sleep(3)
-    check_prev_block(silkroad)
+    check_prev_block(silkroad, db)
 
     (@highest_block..block_count).each do |block_num|
       db.transaction do
