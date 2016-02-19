@@ -12,7 +12,7 @@ require 'os'
 # Internal dependancies/models
 
 # Variable declarations
-db_version = 9
+db_version = 10
 
 silkroad = nil
 db = nil
@@ -400,7 +400,9 @@ def parse_block(block_num, silkroad, block_count)
             :value => -db_input.value.round(8),
             :type => 'input',
             :n => db_input.vout,
-            :balance => address.balance
+            :balance => address.balance,
+            :blockHash => db_block.blockHash,
+            :height => db_block.height
         )
 
         address.save
@@ -458,7 +460,9 @@ def parse_block(block_num, silkroad, block_count)
             :value => value.round(8),
             :type => 'output',
             :n => n,
-            :balance => address_out.balance
+            :balance => address_out.balance,
+            :blockHash => db_block.blockHash,
+            :height => db_block.height
         )
       end
       address_out.save
