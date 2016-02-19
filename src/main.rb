@@ -12,7 +12,7 @@ require 'os'
 # Internal dependancies/models
 
 # Variable declarations
-db_version = 9
+db_version = 10
 
 silkroad = nil
 db = nil
