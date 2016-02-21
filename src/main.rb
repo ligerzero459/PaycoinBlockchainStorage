@@ -12,7 +12,7 @@ require 'os'
 # Internal dependancies/models
 
 # Variable declarations
-db_version = 10
+db_version = 11
 
 silkroad = nil
 db = nil
@@ -413,6 +413,7 @@ def parse_block(block_num, silkroad, block_count)
     vouts = result.fetch("vout")
     total_output = 0
     stake = false
+    prime_stake = false
 
     # Loop through all outputs
     vouts.each do |vout|
@@ -425,6 +426,9 @@ def parse_block(block_num, silkroad, block_count)
       if type == 'nonstandard'
         if asm == '' || asm == 'OP_MICROPRIME'
           stake = true
+        elsif asm.include? "OP_PRIME"
+          stake = true
+          prime_stake = true
         end
       end
       address = ''
@@ -477,11 +481,13 @@ def parse_block(block_num, silkroad, block_count)
         db_transaction.fees = stake_amount.round(8)
         db_transaction.type = 'PoS-Reward'
         db_transaction.coinstake = true
+        db_transaction.primestake = prime_stake
       else # Assume scrape address
         stake_amount = vouts[2].fetch("value")
         db_transaction.fees = stake_amount.round(8)
         db_transaction.type = 'PoS-Reward'
         db_transaction.coinstake = true
+        db_transaction.primestake = prime_stake
       end
     elsif stake && vouts.length == 2
       # Stake edge case where stake only has one transaction
@@ -489,11 +495,13 @@ def parse_block(block_num, silkroad, block_count)
       db_transaction.fees = stake_amount.round(8)
       db_transaction.type = 'PoS-Reward'
       db_transaction.coinstake = true
+      db_transaction.primestake = prime_stake
     elsif stake && reward_block
       # Coinbase of stake transaction
       db_transaction.fees = total_output - total_input
       db_transaction.type = 'PoS-Reward'
       db_transaction.coinbase = true
+      db_transaction.primestake = prime_stake
     elsif !stake && reward_block
       # set transaction type to PoW-Reward
       db_transaction.fees = total_output.round(8)
